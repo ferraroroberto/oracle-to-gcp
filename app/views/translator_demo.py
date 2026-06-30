@@ -10,6 +10,7 @@ from typing import Any
 import streamlit as st
 
 from src import clear_log_buffer, get_logger, stream_to_streamlit
+from src.connections import test_all_connections
 from src.execution import (
     ensure_execution_input_dir,
     find_previous_results,
@@ -19,6 +20,8 @@ from src.execution import (
     run_sql_file,
 )
 from src.mock_environment import load_demo_script, load_mapping_registry
+from src.secrets import redact
+from src.table_registry import export_csv, import_csv, list_mappings, template_csv, upsert_mapping, TableMapping
 from src.pipeline_config import (
     DEFAULT_PIPELINE_CONFIG_PATH,
     config_to_dict,
@@ -46,12 +49,18 @@ def render() -> None:
         st.error(f"Could not load pipeline config: {exc}")
         return
 
-    demo_tab, execution_tab, config_tab = st.tabs(["Demo", "Execution", "Configuration"])
+    demo_tab, execution_tab, config_tab, table_tab, raw_tab = st.tabs(
+        ["Demo", "Execution", "Connection Configuration", "Table Correspondence", "Advanced JSON"]
+    )
     with demo_tab:
         _render_demo_tab(pipeline_config)
     with execution_tab:
         _render_execution_tab(pipeline_config)
     with config_tab:
+        _render_connection_configuration_tab(Path(config_path), pipeline_config)
+    with table_tab:
+        _render_table_correspondence_tab()
+    with raw_tab:
         _render_configuration_tab(Path(config_path), pipeline_config)
 
 
@@ -114,8 +123,149 @@ def _render_execution_tab(pipeline_config) -> None:
     _render_previous_results(active_config)
 
 
+def _render_connection_configuration_tab(config_path: Path, pipeline_config) -> None:
+    st.caption("Edit production-shaped connection metadata. Secrets stay in .env/environment variables, not JSON.")
+    raw = config_to_dict(pipeline_config)
+
+    with st.form("connection_config_form"):
+        st.subheader("LLM")
+        llm = raw["llm"]
+        col1, col2, col3 = st.columns(3)
+        llm["base_url"] = col1.text_input("LLM base URL", value=llm["base_url"], key="cfg_llm_base_url")
+        llm["model"] = col2.text_input("Model", value=llm["model"], key="cfg_llm_model")
+        llm["request_format"] = col3.selectbox(
+            "Request format",
+            ["openai_chat", "anthropic_messages"],
+            index=0 if llm.get("request_format") == "openai_chat" else 1,
+            key="cfg_llm_format",
+        )
+        col1, col2, col3 = st.columns(3)
+        llm["timeout_seconds"] = col1.number_input(
+            "Timeout seconds", min_value=0.1, value=float(llm["timeout_seconds"]), key="cfg_llm_timeout"
+        )
+        llm["temperature"] = col2.number_input(
+            "Temperature", min_value=0.0, max_value=2.0, value=float(llm["temperature"]), key="cfg_llm_temp"
+        )
+        llm["api_key_env_var"] = col3.text_input(
+            "API key env var", value=llm.get("api_key_env_var", ""), key="cfg_llm_api_key_env"
+        )
+
+        st.subheader("Google Cloud / BigQuery")
+        gcp = raw["google_cloud"]
+        bq = raw["bigquery"]
+        col1, col2, col3 = st.columns(3)
+        gcp["project_id"] = col1.text_input("GCP project", value=gcp["project_id"], key="cfg_gcp_project")
+        gcp["location"] = col2.text_input("GCP location", value=gcp["location"], key="cfg_gcp_location")
+        gcp["auth_mode"] = col3.selectbox(
+            "GCP auth mode", ["mock", "application_default", "oauth", "service_account"], key="cfg_gcp_auth"
+        )
+        col1, col2, col3 = st.columns(3)
+        bq["project_id"] = col1.text_input("BigQuery project", value=bq["project_id"], key="cfg_bq_project")
+        bq["dataset"] = col2.text_input("BigQuery dataset", value=bq["dataset"], key="cfg_bq_dataset")
+        bq["location"] = col3.text_input("BigQuery location", value=bq["location"], key="cfg_bq_location")
+
+        st.subheader("Oracle")
+        oracle = raw["oracle"]
+        col1, col2, col3, col4 = st.columns(4)
+        oracle["host"] = col1.text_input("Host", value=oracle["host"], key="cfg_oracle_host")
+        oracle["port"] = int(col2.number_input("Port", min_value=1, value=int(oracle["port"]), key="cfg_oracle_port"))
+        oracle["service_name"] = col3.text_input("Service name", value=oracle["service_name"], key="cfg_oracle_service")
+        oracle["default_schema"] = col4.text_input("Default schema", value=oracle["default_schema"], key="cfg_oracle_schema")
+        col1, col2 = st.columns(2)
+        oracle["username_env_var"] = col1.text_input(
+            "Username env var", value=oracle.get("username_env_var", ""), key="cfg_oracle_user_env"
+        )
+        oracle["password_env_var"] = col2.text_input(
+            "Password env var", value=oracle.get("password_env_var", ""), key="cfg_oracle_password_env"
+        )
+
+        submitted = st.form_submit_button("Save connection configuration", type="primary")
+    if submitted:
+        try:
+            saved = write_pipeline_config(config_path, raw)
+        except Exception as exc:
+            st.error(f"Could not save config: {exc}")
+            return
+        st.success(f"Saved config to {saved.path}")
+        st.json(redact(config_to_dict(saved)))
+
+    if st.button("Test configured connections", key="test_connections"):
+        results = [result.to_dict() for result in test_all_connections(pipeline_config)]
+        st.dataframe(results, width="stretch")
+        st.json(results)
+
+
+def _render_table_correspondence_tab() -> None:
+    st.caption("Maintain the durable Oracle↔BigQuery correspondence registry. Import/export uses CSV for easy spreadsheet editing.")
+    rows = list_mappings()
+    st.download_button(
+        "Download CSV template",
+        data=template_csv(),
+        file_name="table_correspondence_template.csv",
+        mime="text/csv",
+        key="download_registry_template",
+    )
+    if rows:
+        st.download_button(
+            "Export current registry CSV",
+            data=export_csv(),
+            file_name="table_correspondence.csv",
+            mime="text/csv",
+            key="export_registry_csv",
+        )
+        st.dataframe([asdict(row) for row in rows], width="stretch")
+    else:
+        st.info("No correspondence rows yet. Run a script preflight or import a CSV template.")
+
+    uploaded = st.file_uploader("Import correspondence CSV", type=["csv"], key="import_registry_csv")
+    if uploaded is not None and st.button("Import CSV", type="primary", key="import_registry_button"):
+        try:
+            count = import_csv(uploaded.getvalue().decode("utf-8"))
+        except Exception as exc:
+            st.error(f"Could not import CSV: {exc}")
+        else:
+            st.success(f"Imported {count} row(s). Refresh the app to see the updated registry.")
+
+    with st.expander("Schema compatibility preflight", expanded=False):
+        st.info(
+            "Column-level compatibility has a reserved registry table (`column_mappings`) for Oracle/BigQuery "
+            "columns, types, presence flags, compatibility status, timestamps, and notes. Automated metadata "
+            "collection is split into follow-up issue #7 so table go/no-go can ship first."
+        )
+
+    with st.expander("Add or edit one row", expanded=False):
+        with st.form("mapping_row_form"):
+            col1, col2, col3 = st.columns(3)
+            oracle_schema = col1.text_input("Oracle schema", value="demo", key="map_oracle_schema")
+            oracle_table = col2.text_input("Oracle table", key="map_oracle_table")
+            status = col3.selectbox("Status", ["pending", "ready", "blocked"], key="map_status")
+            col1, col2, col3 = st.columns(3)
+            bq_project = col1.text_input("BigQuery project", value="mock-gcp-project", key="map_bq_project")
+            bq_dataset = col2.text_input("BigQuery dataset", value="mock_dataset", key="map_bq_dataset")
+            bq_table = col3.text_input("BigQuery table", key="map_bq_table")
+            col1, col2 = st.columns(2)
+            oracle_reachable = col1.checkbox("Oracle reachable", key="map_oracle_reachable")
+            bq_reachable = col2.checkbox("BigQuery reachable", key="map_bq_reachable")
+            notes = st.text_area("Notes", key="map_notes")
+            if st.form_submit_button("Save row"):
+                upsert_mapping(
+                    TableMapping(
+                        oracle_schema=oracle_schema,
+                        oracle_table=oracle_table,
+                        bigquery_project=bq_project,
+                        bigquery_dataset=bq_dataset,
+                        bigquery_table=bq_table,
+                        status=status,
+                        oracle_reachable=oracle_reachable,
+                        bigquery_reachable=bq_reachable,
+                        notes=notes,
+                    )
+                )
+                st.success("Saved row. Refresh the app to see the updated registry.")
+
+
 def _render_configuration_tab(config_path: Path, pipeline_config) -> None:
-    st.caption("Edit the JSON config saved on disk. Invalid JSON is rejected before writing.")
+    st.caption("Advanced: edit the raw JSON config saved on disk. Invalid JSON is rejected before writing.")
     raw_json = st.text_area(
         "Config JSON",
         value=json.dumps(config_to_dict(pipeline_config), indent=2),

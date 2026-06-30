@@ -7,16 +7,48 @@
   },
   "execution": {
     "default_input_dir": "data/input/sql_scripts",
-    "result_suffix": "_bq"
+    "result_suffix": "_bq",
+    "table_registry_path": "data/table_registry.db"
   },
   "llm": {
     "base_url": "http://127.0.0.1:8000",
     "model": "claude-haiku-4-5",
     "timeout_seconds": 8,
     "temperature": 0,
+    "request_format": "openai_chat",
+    "auth_mode": "bearer",
+    "api_key_env_var": "LLM_API_KEY",
+    "authorization_header_env_var": "",
     "system_message": "You are a deterministic SQL dialect translator. Do not invent tables. Return one SQL statement.",
     "user_prompt_template": "Translate this Oracle SQL statement to BigQuery Standard SQL. Return only SQL, no markdown. Use this lower-case table mapping: {mapping_json}\n\n{oracle_sql}",
     "extra_parameters": {}
+  },
+  "google_cloud": {
+    "project_id": "mock-gcp-project",
+    "location": "EU",
+    "auth_mode": "mock",
+    "credentials_env_var": "GOOGLE_APPLICATION_CREDENTIALS",
+    "oauth_client_env_var": "GOOGLE_OAUTH_CLIENT_SECRET",
+    "scopes": [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+  },
+  "bigquery": {
+    "project_id": "mock-gcp-project",
+    "dataset": "mock_dataset",
+    "location": "EU",
+    "auth_mode": "mock",
+    "credentials_env_var": "GOOGLE_APPLICATION_CREDENTIALS"
+  },
+  "oracle": {
+    "host": "mock-oracle.local",
+    "port": 1521,
+    "service_name": "ORCLPDB1",
+    "sid": "",
+    "default_schema": "DEMO",
+    "username_env_var": "ORACLE_USERNAME",
+    "password_env_var": "ORACLE_PASSWORD",
+    "auth_mode": "mock"
   },
   "trace": {
     "enabled": true,

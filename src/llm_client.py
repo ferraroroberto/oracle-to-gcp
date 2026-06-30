@@ -11,6 +11,7 @@ from typing import Any
 
 from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS
 from src.pipeline_config import LLMConfig
+from src.secrets import get_env_secret
 
 
 @dataclass(slots=True)
@@ -38,6 +39,9 @@ class LocalHubClient:
         system_message: str | None = None,
         user_prompt_template: str | None = None,
         extra_parameters: dict[str, Any] | None = None,
+        auth_mode: str = "bearer",
+        api_key_env_var: str = "LLM_API_KEY",
+        authorization_header_env_var: str = "",
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -53,6 +57,9 @@ class LocalHubClient:
             "{mapping_json}\n\n{oracle_sql}"
         )
         self.extra_parameters = extra_parameters or {}
+        self.auth_mode = auth_mode
+        self.api_key_env_var = api_key_env_var
+        self.authorization_header_env_var = authorization_header_env_var
 
     @classmethod
     def from_config(cls, config: LLMConfig) -> LocalHubClient:
@@ -65,6 +72,9 @@ class LocalHubClient:
             system_message=config.system_message,
             user_prompt_template=config.user_prompt_template,
             extra_parameters=config.extra_parameters,
+            auth_mode=config.auth_mode,
+            api_key_env_var=config.api_key_env_var,
+            authorization_header_env_var=config.authorization_header_env_var,
         )
 
     def translate(self, oracle_sql: str, mapping: dict[str, str]) -> LLMResponse:
@@ -90,7 +100,7 @@ class LocalHubClient:
         request = urllib.request.Request(
             endpoint,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": "Bearer local-dummy"},
+            headers={"Content-Type": "application/json", "Authorization": self._authorization_header()},
             method="POST",
         )
         started = time.perf_counter()
@@ -127,6 +137,17 @@ class LocalHubClient:
             request_payload=payload,
             response_payload=body,
         )
+
+    def _authorization_header(self) -> str:
+        if self.authorization_header_env_var:
+            value = get_env_secret(self.authorization_header_env_var)
+            if value:
+                return value
+        if self.api_key_env_var:
+            value = get_env_secret(self.api_key_env_var)
+            if value:
+                return f"Bearer {value}"
+        return "Bearer local-dummy"
 
 
 def _strip_sql_fence(text: str) -> str:
