@@ -9,5 +9,5 @@
 # pipeline (working-pipe). `layer` ∈ governance | enabling | working-web | working-pipe.
 display_name = "Oracle to GCP"
 layer        = "working-pipe"
-icon         = "BQ"
+icon         = "☁️"
 description  = "Local Oracle SQL to BigQuery translator prototype with a SQLite-backed mock validation loop."
