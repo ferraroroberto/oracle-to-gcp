@@ -1,0 +1,4 @@
+{
+  "sales_orders": "raw_sales_orders",
+  "customer_segments": "raw_customer_segments"
+}

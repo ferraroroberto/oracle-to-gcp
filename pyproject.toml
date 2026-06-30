@@ -1,0 +1,12 @@
+# Tooling config for Oracle to GCP. This is not a packaging manifest; the app
+# runs in place. Pytest config stays in pytest.ini.
+
+[tool.ruff]
+# Match the documented CI floor (CLAUDE.md → "GitHub Actions CI conventions").
+target-version = "py312"
+
+[tool.ruff.lint]
+# Ruff's default rule set (E4/E7/E9, F) PLUS pyupgrade (UP) — extend-select keeps
+# the defaults intact and adds UP, which is the fleet's baseline strictness.
+extend-select = ["UP"]
+

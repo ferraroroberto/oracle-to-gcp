@@ -1,0 +1,13 @@
+# .fleet.toml — this repo's card on the fleet architecture map.
+# fleet-config's /system-map aggregates every repo's .fleet.toml (schema +
+# reasoning: fleet-config/architecture/README.md). Keep it current: update this
+# in the same PR as any material change (layer, port, role, one-line description,
+# exposed services).
+#
+# CLONED A NEW REPO FROM THIS SCAFFOLD? Replace the values below with your repo's
+# own — at minimum `description`, usually `icon`, and `layer` if it is not a
+# pipeline (working-pipe). `layer` ∈ governance | enabling | working-web | working-pipe.
+display_name = "Oracle to GCP"
+layer        = "working-pipe"
+icon         = "BQ"
+description  = "Local Oracle SQL to BigQuery translator prototype with a SQLite-backed mock validation loop."

@@ -1,0 +1,9 @@
+streamlit>=1.30.0
+
+# Testing — unit (pytest) + headless e2e (pytest-playwright).
+# After install: .venv\Scripts\python.exe -m playwright install chromium
+pytest>=8.0.0
+pytest-playwright>=0.5.0
+
+# Lint gate. Config lives in pyproject.toml.
+ruff>=0.10.0

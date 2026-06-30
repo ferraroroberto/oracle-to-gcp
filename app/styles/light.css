@@ -1,0 +1,103 @@
+/* Light-mode overlay.
+   Applied on top of the dark theme defined in .streamlit/config.toml
+   when the sidebar "Light mode" toggle is on. Palette is kept neutral
+   on purpose — override these hex values per-project. */
+
+[data-testid="stAppViewContainer"], .stApp {
+    background-color: #FFFFFF !important;
+    color: #1F2328 !important;
+}
+[data-testid="stHeader"] { background-color: #FFFFFF !important; }
+[data-testid="stSidebar"] {
+    background-color: #F5F7FA !important;
+    color: #1F2328 !important;
+}
+[data-testid="stSidebar"] * { color: #1F2328 !important; }
+.stMarkdown, .stMarkdown * { color: #1F2328 !important; }
+
+/* Widget labels and headings */
+label, .stWidgetLabel, [data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] *,
+label p, label span, label div {
+    color: #1F2328 !important;
+}
+h1, h2, h3, h4, h5, h6 { color: #1F2328 !important; }
+.stCaption, [data-testid="stCaptionContainer"] { color: #57606A !important; }
+
+/* Inputs, textareas, selects, number steppers */
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea,
+[data-testid="stNumberInput"] input,
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea,
+[data-baseweb="select"] > div,
+[data-baseweb="base-input"] {
+    background-color: #FFFFFF !important;
+    color: #1F2328 !important;
+    border-color: #D0D7DE !important;
+}
+[data-testid="stNumberInput"] button,
+[data-testid="stTextInput"] button {
+    background-color: #F5F7FA !important;
+    color: #1F2328 !important;
+    border: 1px solid #D0D7DE !important;
+    box-shadow: none !important;
+}
+
+/* Placeholder text */
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder,
+[data-testid="stNumberInput"] input::placeholder,
+[data-baseweb="input"] input::placeholder,
+[data-baseweb="textarea"] textarea::placeholder {
+    color: #6E7781 !important;
+    opacity: 1 !important;
+}
+
+/* Select dropdown popover */
+[data-baseweb="popover"] [role="listbox"],
+[data-baseweb="menu"] {
+    background-color: #FFFFFF !important;
+    color: #1F2328 !important;
+}
+[data-baseweb="menu"] li { color: #1F2328 !important; }
+
+/* Code blocks & inline code */
+code, pre, .stCode, [data-testid="stCodeBlock"] {
+    background-color: #F5F7FA !important;
+    color: #1F2328 !important;
+}
+[data-testid="stCodeBlock"] pre,
+[data-testid="stCodeBlock"] code { background-color: #F5F7FA !important; }
+
+/* Metric tiles */
+[data-testid="stMetric"] {
+    background-color: #F5F7FA !important;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+[data-testid="stMetricLabel"], [data-testid="stMetricValue"] {
+    color: #1F2328 !important;
+}
+
+/* Expanders */
+[data-testid="stExpander"] {
+    background-color: #F5F7FA !important;
+    border: 1px solid #D0D7DE !important;
+}
+[data-testid="stExpander"] * { color: #1F2328 !important; }
+
+/* Secondary buttons */
+.stButton > button[kind="secondary"] {
+    background-color: #FFFFFF !important;
+    color: #1F2328 !important;
+    border-color: #D0D7DE !important;
+}
+/* Disabled buttons: muted surface with readable gray text */
+.stButton > button:disabled,
+.stButton > button[disabled] {
+    background-color: #F5F7FA !important;
+    color: #8C959F !important;
+    border: 1px solid #D0D7DE !important;
+    opacity: 1 !important;
+}

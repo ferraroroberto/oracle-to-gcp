@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# e2e test runtime artefact (written by tests/_streamlit_lifecycle.py)
+tests/_streamlit_restart_marker.txt
+
+# Virtual env
+.venv/
+venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Project working data
+data/logs/*
+data/output/*
+data/input/*
+!data/logs/.gitkeep
+!data/output/.gitkeep
+!data/input/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local settings
+.claude/
+
+# Launcher scratch (ephemeral images/logs written by the tray launcher)
+.launcher-tmp/
+
+# OS
+.DS_Store
+Thumbs.db
