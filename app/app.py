@@ -36,7 +36,7 @@ import streamlit as st
 
 from src.config import APP_NAME
 from src.logger import get_logger
-from views import translator_demo, welcome
+from views import process_map, translator_demo, welcome
 
 # ---------------------------------------------------------------------------
 # Page config (must be first Streamlit call)
@@ -80,6 +80,12 @@ nav_pages = [
         title="Execution",
         icon=":material/transform:",
         url_path="execution",
+    ),
+    st.Page(
+        process_map.render,
+        title="Process Map",
+        icon=":material/account_tree:",
+        url_path="process-map",
     ),
 ]
 

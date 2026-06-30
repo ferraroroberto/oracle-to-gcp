@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oracle to GCP Process Map</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f8fb;
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: #ffffff;
+      --ink: #142033;
+      --muted: #607089;
+      --line: #d9e0ea;
+      --accent: #3367d6;
+      --accent-2: #13a186;
+      --accent-3: #8b5cf6;
+      --warn: #c88719;
+      --shadow: 0 18px 50px rgba(20, 32, 51, 0.12);
+      --soft: rgba(51, 103, 214, 0.10);
+      --good: rgba(19, 161, 134, 0.12);
+      --risk: rgba(200, 135, 25, 0.14);
+    }
+
+    [data-theme="dark"] {
+      --bg: #07111f;
+      --panel: rgba(14, 26, 45, 0.88);
+      --panel-strong: #101d31;
+      --ink: #edf4ff;
+      --muted: #a9b7cc;
+      --line: rgba(181, 197, 222, 0.20);
+      --accent: #75a7ff;
+      --accent-2: #51d6bd;
+      --accent-3: #b9a2ff;
+      --warn: #ffd166;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.34);
+      --soft: rgba(117, 167, 255, 0.15);
+      --good: rgba(81, 214, 189, 0.13);
+      --risk: rgba(255, 209, 102, 0.15);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 12% 10%, var(--soft), transparent 30%),
+        radial-gradient(circle at 88% 16%, rgba(139, 92, 246, 0.16), transparent 28%),
+        linear-gradient(135deg, var(--bg), var(--bg));
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .map {
+      width: 1600px;
+      height: 900px;
+      padding: 38px 46px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .shell {
+      height: 100%;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 30px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 18px;
+      backdrop-filter: blur(18px);
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr auto;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .eyebrow {
+      color: var(--accent-2);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 3.6vw, 50px);
+      line-height: 0.94;
+      letter-spacing: -0.055em;
+    }
+
+    .headline p {
+      margin: 12px 0 0;
+      max-width: 680px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.32;
+    }
+
+    .value-card {
+      background: linear-gradient(135deg, var(--soft), rgba(19, 161, 134, 0.10));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px 20px;
+    }
+
+    .value-card strong { display: block; font-size: 18px; margin-bottom: 8px; }
+    .value-card span { display: block; color: var(--muted); line-height: 1.35; }
+
+    .theme-toggle {
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      white-space: nowrap;
+    }
+
+    .theme-toggle button {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--muted);
+      background: transparent;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .theme-toggle button.active { background: var(--accent); color: #fff; }
+
+    main {
+      display: grid;
+      grid-template-columns: 0.88fr 2.12fr 0.9fr;
+      gap: 20px;
+      min-height: 0;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+      align-content: stretch;
+    }
+
+    .card {
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 15px 16px;
+    }
+
+    .card h2, .card h3 { margin: 0 0 10px; letter-spacing: -0.025em; }
+    .card h2 { font-size: 20px; }
+    .card h3 { font-size: 16px; }
+    .card p, .card li { color: var(--muted); line-height: 1.34; font-size: 14px; }
+    .card p { margin: 0; }
+    .card ul { margin: 0; padding-left: 18px; }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: color-mix(in srgb, var(--panel-strong) 84%, var(--accent) 16%);
+    }
+
+    .chip b { display: block; font-size: 13px; margin-bottom: 3px; }
+    .chip span { color: var(--muted); font-size: 12px; line-height: 1.25; }
+
+    .workflow {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .workflow::before {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 48px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0.58;
+    }
+
+    .step {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 8px;
+      grid-template-rows: auto auto 1fr;
+      min-height: 228px;
+      padding: 14px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+    }
+
+    .number {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      color: #fff;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), var(--accent-3));
+      box-shadow: 0 10px 22px rgba(51, 103, 214, 0.22);
+    }
+
+    .step h3 { font-size: 16px; margin: 0; }
+    .step p { margin: 0; font-size: 12.7px; color: var(--muted); line-height: 1.3; }
+    .step small { color: var(--accent-2); font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .left-stack {
+      grid-template-rows: 400px 130px;
+    }
+
+    .tech-card .chip {
+      padding: 8px;
+    }
+
+    .how-card {
+      align-self: stretch;
+    }
+
+    .llm-step,
+    .loop-step {
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-3) 48%, transparent);
+    }
+
+    .loop-step::after {
+      content: "LLM repair iteration";
+      position: absolute;
+      top: -30px;
+      left: -58%;
+      width: 152%;
+      padding: 5px 10px;
+      border: 1px dashed var(--accent-3);
+      border-radius: 999px;
+      color: var(--accent-3);
+      background: var(--panel-strong);
+      font-size: 11px;
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .outcome {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 100px;
+      border: 1px solid var(--line);
+      background: var(--good);
+    }
+
+    .metric b { display: block; font-size: 22px; letter-spacing: -0.03em; }
+    .metric span { color: var(--muted); font-size: 12px; line-height: 1.2; }
+
+    .center-stack {
+      grid-template-rows: 400px 130px;
+    }
+
+    .pros-cons {
+      display: grid;
+      gap: 12px;
+      grid-template-rows: 190px 210px 110px;
+    }
+    .pros { background: var(--good); }
+    .cons { background: var(--risk); }
+
+    footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .callout {
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    @media (max-width: 1599px) {
+      html,
+      body {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+      }
+
+      .map {
+        position: fixed;
+        inset: 0 auto auto 0;
+        transform-origin: top left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="map" aria-label="Oracle to GCP executive process map">
+    <div class="shell">
+      <header>
+        <div class="headline">
+          <div class="eyebrow">Executive process map</div>
+          <h1>Oracle SQL to BigQuery with guardrails, not guesswork.</h1>
+          <p>A deterministic migration workflow that uses an LLM only where it adds leverage: translation. Everything around it is mapped, checked, executed, fingerprinted, and auditable.</p>
+        </div>
+        <div class="value-card">
+          <strong>Value in one sentence</strong>
+          <span>Reduce migration risk by turning legacy SQL conversion into a repeatable evidence trail: inputs, mappings, translations, repairs, validation, and final BigQuery artifacts.</span>
+        </div>
+        <div class="theme-toggle" aria-label="Theme selector">
+          <button type="button" data-theme-button="light">Light</button>
+          <button type="button" data-theme-button="dark" class="active">Dark</button>
+        </div>
+      </header>
+
+      <main>
+        <aside class="stack left-stack">
+          <section class="card tech-card">
+            <h2>Technology used</h2>
+            <div class="tech-grid">
+              <div class="chip"><b>Python</b><span>orchestration + validation</span></div>
+              <div class="chip"><b>Streamlit</b><span>operator UI</span></div>
+              <div class="chip"><b>SQLite mocks</b><span>safe Oracle/BQ stand-ins</span></div>
+              <div class="chip"><b>LLM</b><span>stateless translation + repair</span></div>
+              <div class="chip"><b>Registry DB</b><span>table correspondence</span></div>
+              <div class="chip"><b>JSON trace</b><span>audit trail</span></div>
+            </div>
+          </section>
+          <section class="card how-card">
+            <h2>How to use it</h2>
+            <ul>
+              <li>Load a script or run the demo.</li>
+              <li>Fix mappings until preflight is green.</li>
+              <li>Run and review trace, SQL, logs, report.</li>
+              <li>Promote on fingerprint parity.</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="stack center-stack">
+          <div class="workflow" aria-label="Workflow stages">
+            <article class="step">
+              <div class="number">1</div>
+              <h3>Ingest legacy SQL</h3>
+              <p>Accept Oracle scripts, materialize simple PL/SQL variables, and split the reduced SQL into ordered executable units.</p>
+              <small>Normalize</small>
+            </article>
+            <article class="step">
+              <div class="number">2</div>
+              <h3>Preflight data readiness</h3>
+              <p>Extract source tables, verify registry mappings, probe reachability, compare schemas, and stop early on unmapped or incompatible data.</p>
+              <small>De-risk</small>
+            </article>
+            <article class="step llm-step">
+              <div class="number">3</div>
+              <h3>Translate with LLM</h3>
+              <p>Use the LLM as a replaceable function to convert each SQL unit into BigQuery Standard SQL.</p>
+              <small>Convert</small>
+            </article>
+            <article class="step loop-step">
+              <div class="number">4</div>
+              <h3>Repair loop</h3>
+              <p>Execute, inspect errors, and retry with bounded LLM-assisted repairs until guardrails pass or the run stops.</p>
+              <small>Iterate</small>
+            </article>
+            <article class="step">
+              <div class="number">5</div>
+              <h3>Execute both sides</h3>
+              <p>Run mock Oracle and BigQuery paths, capturing generated SQL, logs, errors, and trace snapshots.</p>
+              <small>Prove</small>
+            </article>
+            <article class="step">
+              <div class="number">6</div>
+              <h3>Validate fingerprints</h3>
+              <p>Compare row counts, numeric sums, and grouped aggregates before producing final SQL and report.</p>
+              <small>Evidence</small>
+            </article>
+          </div>
+          <div class="outcome">
+            <div class="metric"><b>Repeatable</b><span>same inputs produce inspectable stages and artifacts</span></div>
+            <div class="metric"><b>Auditable</b><span>trace JSON explains decisions and failures</span></div>
+            <div class="metric"><b>Safer</b><span>preflight and fingerprints catch issues before promotion</span></div>
+          </div>
+        </section>
+
+        <aside class="pros-cons">
+          <section class="card pros">
+            <h2>Pros</h2>
+            <ul>
+              <li>LLM speed without opaque end-to-end automation.</li>
+              <li>Early blockers are visible: mapping, schema, data parity.</li>
+              <li>Designed for review by engineers and executives.</li>
+            </ul>
+          </section>
+          <section class="card cons">
+            <h2>Constraints</h2>
+            <ul>
+              <li>Mocks prove workflow shape, not full production coverage.</li>
+              <li>Complex PL/SQL still needs expansion of deterministic parsers.</li>
+              <li>Real cutover requires credentials, datasets, and governance.</li>
+            </ul>
+          </section>
+          <section class="card">
+            <h2>Decision frame</h2>
+            <p><span class="callout">Use this when:</span> the goal is to migrate many scripts with traceability, measurable equivalence, and a human-controlled promotion path.</p>
+          </section>
+        </aside>
+      </main>
+
+    </div>
+  </section>
+  <script>
+    const buttons = document.querySelectorAll('[data-theme-button]');
+    const map = document.querySelector('.map');
+    const fitMap = () => {
+      const scale = Math.min(1, window.innerWidth / 1600);
+      map.style.transform = `scale(${scale})`;
+      document.body.style.minHeight = `${900 * scale}px`;
+    };
+    const setTheme = (theme) => {
+      document.documentElement.dataset.theme = theme;
+      buttons.forEach((button) => button.classList.toggle('active', button.dataset.themeButton === theme));
+    };
+    const requested = new URLSearchParams(window.location.search).get('theme');
+    setTheme(requested === 'light' ? 'light' : 'dark');
+    fitMap();
+    window.addEventListener('resize', fitMap);
+    buttons.forEach((button) => button.addEventListener('click', () => setTheme(button.dataset.themeButton)));
+  </script>
+</body>
+</html>

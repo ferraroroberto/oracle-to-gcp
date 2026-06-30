@@ -41,6 +41,8 @@ Open the **Execution** page. The page has five tabs:
 - **Table Correspondence** — maintains the durable Oracle↔BigQuery registry, including CSV template download, CSV import, CSV export, and one-row manual edits.
 - **Advanced JSON** — edits and saves the raw `config/pipeline.json` for advanced changes.
 
+The sidebar also includes **Process Map**, an executive one-page visual of the migration workflow, technology stack, tradeoffs, and value proposition. The standalone HTML map and its snapshot live next to the docs at `docs/oracle-to-gcp-process-map.html` and `docs/oracle-to-gcp-process-map.png`.
+
 ## Mock Inputs
 
 - Oracle demo script: `examples/demo_oracle_script.sql`
@@ -201,4 +203,4 @@ Run the full scaffold gate:
 
 ## Rationale
 
-The design reasoning and tradeoffs are documented in `docs/architecture-rationale.md`. The short version: this project treats the LLM as one replaceable stateless function inside a deterministic migration pipeline. The hard parts are parsing, mapping, ordered execution, validation, and auditability.
+The design reasoning and tradeoffs are documented in `docs/architecture-rationale.md`. For an executive visual summary, open `docs/oracle-to-gcp-process-map.html` or the **Process Map** page in Streamlit. The short version: this project treats the LLM as one replaceable stateless function inside a deterministic migration pipeline. The hard parts are parsing, mapping, ordered execution, validation, and auditability.
