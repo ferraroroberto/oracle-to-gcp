@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from src.mock_environment import bootstrap_mock_environment, connect_sqlite, load_demo_script
 from src.execution import find_previous_results, list_sql_scripts, load_report_json, run_sql_batch, run_sql_file
 from src.pipeline_config import load_pipeline_config, with_overrides
 from src.pipelines.oracle_to_bigquery import run
+from src.preflight import refresh_schema_compatibility
+from src.table_registry import TableMapping, list_column_mappings
 from src.pipelines.oracle_to_bigquery import main as pipeline_main
 from src.sql_processing import build_units, materialize_variables
 
@@ -123,6 +127,48 @@ def test_batch_execution_scans_only_sql_files(tmp_path) -> None:
     assert len(results) == 2
     assert all(result.status == "validated" for result in results)
     assert len(find_previous_results(tmp_path)) == 2
+
+
+def test_schema_preflight_records_matching_missing_and_type_mismatch_columns(tmp_path) -> None:
+    paths = bootstrap_mock_environment(tmp_path)
+    registry_path = tmp_path / "registry.db"
+    mapping = TableMapping(
+        oracle_schema="demo",
+        oracle_table="sales_orders",
+        bigquery_project="mock-gcp-project",
+        bigquery_dataset="mock_dataset",
+        bigquery_table="raw_sales_orders",
+        status="ready",
+        oracle_reachable=True,
+        bigquery_reachable=True,
+    )
+    with connect_sqlite(paths["oracle_db"]) as oracle_conn, connect_sqlite(paths["bigquery_db"]) as bq_conn:
+        bq_conn.execute("ALTER TABLE raw_sales_orders DROP COLUMN region")
+        bq_conn.execute("ALTER TABLE raw_sales_orders ADD COLUMN amount_text TEXT")
+        oracle_conn.execute("ALTER TABLE sales_orders ADD COLUMN amount_text REAL")
+
+        rows = refresh_schema_compatibility(
+            mapping=mapping,
+            oracle_conn=oracle_conn,
+            bigquery_conn=bq_conn,
+            registry_path=str(registry_path),
+        )
+
+    statuses = {row.oracle_column: row.compatibility_status for row in rows}
+    assert statuses["order_id"] == "compatible"
+    assert statuses["region"] == "missing_target"
+    assert statuses["amount_text"] == "type_mismatch"
+    persisted = list_column_mappings(registry_path, oracle_table="sales_orders")
+    assert len(persisted) == len(rows)
+
+
+def test_pipeline_blocks_schema_mismatches_before_translation(tmp_path) -> None:
+    script = "SELECT region FROM sales_orders;"
+    config = with_overrides(load_pipeline_config(), use_local_hub=False, output_dir=str(tmp_path))
+    config.execution.table_registry_path = str(tmp_path / "registry.db")
+
+    with pytest.raises(ValueError, match="schema compatibility failed"):
+        run(script=script, mapping={"sales_orders": "raw_customer_segments"}, pipeline_config=config)
 
 
 def test_batch_execution_continues_after_script_failure(tmp_path) -> None:

@@ -10,6 +10,7 @@ The current project is a working mock: it uses SQLite files as stand-ins for Ora
 - Ordered SQL unit splitting after the script has been reduced to pure SQL.
 - Source-to-target table mapping through a registry.
 - Input row-count parity checks for external source tables.
+- Column-level schema compatibility checks for mapped Oracle↔BigQuery tables.
 - Oracle-to-BigQuery translation with bounded repair attempts.
 - Dual execution against mock Oracle and mock BigQuery SQLite databases.
 - Fingerprint validation using row counts, numeric sums, and grouped aggregates.
@@ -147,7 +148,7 @@ Expected artifacts:
 
 The trace JSON is the browsable audit trail for a run. In trace/debug mode it records pipeline stages, materialized variables, ordered SQL units, table preflight go/no-go results, mappings, row-count checks, every translation attempt, LLM request/response payloads, model parameters, query result samples, validation fingerprints, repair iterations, errors, and artifact paths.
 
-Before translation starts, the pipeline runs a table-readiness preflight. It extracts external source tables from the SQL, seeds known demo mappings into the durable registry, inserts unknown source tables as `pending`, probes mapped Oracle and BigQuery mock tables with a cheap `LIMIT 1` read, records reachability timestamps, and stops before translation if any required table is unmapped or unreachable. The **Table Correspondence** tab is the user-friendly maintenance surface: download the CSV template, fill or edit it in a spreadsheet, import it back, or export the current SQLite registry for review.
+Before translation starts, the pipeline runs a table-readiness and schema preflight. It extracts external source tables from the SQL, seeds known demo mappings into the durable registry, inserts unknown source tables as `pending`, probes mapped Oracle and BigQuery mock tables with a cheap `LIMIT 1` read, records reachability timestamps, refreshes column-level compatibility rows in `column_mappings`, and stops before translation if any required table is unmapped, unreachable, or schema-incompatible. The **Table Correspondence** tab is the user-friendly maintenance surface: download the CSV template, fill or edit it in a spreadsheet, import it back, export the current SQLite registry for review, and inspect column presence/type mismatches from the latest schema preflight.
 
 For file-backed execution, each input `script.sql` writes a sibling result directory named `script_bq` by default. That folder contains the final BigQuery SQL, report JSON, trace JSON, mock database artifacts, a copy of the source SQL, and a text log. The Streamlit Execution tab can load previous results from those result folders after the app is reopened.
 
