@@ -21,7 +21,7 @@ from src.execution import (
 )
 from src.mock_environment import load_demo_script, load_mapping_registry
 from src.secrets import redact
-from src.table_registry import export_csv, import_csv, list_mappings, template_csv, upsert_mapping, TableMapping
+from src.table_registry import export_csv, import_csv, list_column_mappings, list_mappings, template_csv, upsert_mapping, TableMapping
 from src.pipeline_config import (
     DEFAULT_PIPELINE_CONFIG_PATH,
     config_to_dict,
@@ -227,11 +227,16 @@ def _render_table_correspondence_tab() -> None:
             st.success(f"Imported {count} row(s). Refresh the app to see the updated registry.")
 
     with st.expander("Schema compatibility preflight", expanded=False):
-        st.info(
-            "Column-level compatibility has a reserved registry table (`column_mappings`) for Oracle/BigQuery "
-            "columns, types, presence flags, compatibility status, timestamps, and notes. Automated metadata "
-            "collection is split into follow-up issue #7 so table go/no-go can ship first."
-        )
+        column_rows = list_column_mappings()
+        if not column_rows:
+            st.info("No column compatibility rows yet. Run a demo or file execution to refresh schema preflight metadata.")
+        else:
+            incompatible = [row for row in column_rows if row.compatibility_status != "compatible"]
+            if incompatible:
+                st.warning(f"{len(incompatible)} column compatibility issue(s) found.")
+            else:
+                st.success("All refreshed column mappings are compatible.")
+            st.dataframe([asdict(row) for row in column_rows], width="stretch")
 
     with st.expander("Add or edit one row", expanded=False):
         with st.form("mapping_row_form"):

@@ -29,6 +29,26 @@ CSV_COLUMNS = [
 
 
 @dataclass(slots=True)
+class ColumnMapping:
+    """One source-target column compatibility row."""
+
+    oracle_schema: str
+    oracle_table: str
+    oracle_column: str
+    oracle_type: str = ""
+    bigquery_project: str = ""
+    bigquery_dataset: str = ""
+    bigquery_table: str = ""
+    bigquery_column: str = ""
+    bigquery_type: str = ""
+    oracle_present: bool = False
+    bigquery_present: bool = False
+    compatibility_status: str = "unknown"
+    checked_at: str = ""
+    notes: str = ""
+
+
+@dataclass(slots=True)
 class TableMapping:
     """One source-target table correspondence row."""
 
@@ -241,6 +261,65 @@ def mapping_dict(path: str | Path | None = None) -> dict[str, str]:
     return {row.oracle_table: row.bigquery_table for row in list_mappings(path) if row.ready}
 
 
+def replace_column_mappings(
+    table_mapping: TableMapping,
+    columns: list[ColumnMapping],
+    path: str | Path | None = None,
+) -> None:
+    """Replace stored column compatibility rows for one table pair."""
+    db_path = init_registry(path)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "DELETE FROM column_mappings WHERE oracle_schema = ? AND oracle_table = ?",
+            (table_mapping.oracle_schema.lower(), table_mapping.oracle_table.lower()),
+        )
+        conn.executemany(
+            """
+            INSERT INTO column_mappings (
+                oracle_schema, oracle_table, oracle_column, oracle_type,
+                bigquery_project, bigquery_dataset, bigquery_table, bigquery_column,
+                bigquery_type, oracle_present, bigquery_present, compatibility_status,
+                checked_at, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [_column_to_params(column) for column in columns],
+        )
+
+
+def list_column_mappings(
+    path: str | Path | None = None,
+    *,
+    oracle_schema: str | None = None,
+    oracle_table: str | None = None,
+) -> list[ColumnMapping]:
+    """Return stored column compatibility rows."""
+    db_path = init_registry(path)
+    clauses: list[str] = []
+    params: list[str] = []
+    if oracle_schema:
+        clauses.append("oracle_schema = ?")
+        params.append(oracle_schema.lower())
+    if oracle_table:
+        clauses.append("oracle_table = ?")
+        params.append(oracle_table.lower())
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            f"""
+            SELECT oracle_schema, oracle_table, oracle_column, oracle_type,
+                   bigquery_project, bigquery_dataset, bigquery_table, bigquery_column,
+                   bigquery_type, oracle_present, bigquery_present, compatibility_status,
+                   checked_at, notes
+            FROM column_mappings
+            {where}
+            ORDER BY oracle_schema, oracle_table, oracle_column
+            """,
+            params,
+        ).fetchall()
+    return [_column_from_row(row) for row in rows]
+
+
 def export_csv(path: str | Path | None = None) -> str:
     """Export registry rows as CSV text."""
     output = io.StringIO()
@@ -320,6 +399,44 @@ def _from_row(row: sqlite3.Row) -> TableMapping:
         bigquery_reachable=bool(row["bigquery_reachable"]),
         bigquery_checked_at=str(row["bigquery_checked_at"]),
         notes=str(row["notes"]),
+    )
+
+
+def _column_from_row(row: sqlite3.Row) -> ColumnMapping:
+    return ColumnMapping(
+        oracle_schema=str(row["oracle_schema"]),
+        oracle_table=str(row["oracle_table"]),
+        oracle_column=str(row["oracle_column"]),
+        oracle_type=str(row["oracle_type"]),
+        bigquery_project=str(row["bigquery_project"]),
+        bigquery_dataset=str(row["bigquery_dataset"]),
+        bigquery_table=str(row["bigquery_table"]),
+        bigquery_column=str(row["bigquery_column"]),
+        bigquery_type=str(row["bigquery_type"]),
+        oracle_present=bool(row["oracle_present"]),
+        bigquery_present=bool(row["bigquery_present"]),
+        compatibility_status=str(row["compatibility_status"]),
+        checked_at=str(row["checked_at"]),
+        notes=str(row["notes"]),
+    )
+
+
+def _column_to_params(column: ColumnMapping) -> tuple[Any, ...]:
+    return (
+        column.oracle_schema.lower(),
+        column.oracle_table.lower(),
+        column.oracle_column.lower(),
+        column.oracle_type,
+        column.bigquery_project,
+        column.bigquery_dataset,
+        column.bigquery_table.lower(),
+        column.bigquery_column.lower(),
+        column.bigquery_type,
+        int(column.oracle_present),
+        int(column.bigquery_present),
+        column.compatibility_status,
+        column.checked_at,
+        column.notes,
     )
 
 
