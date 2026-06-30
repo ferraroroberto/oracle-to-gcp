@@ -5,6 +5,10 @@
     "repair_limit": 3,
     "output_dir": "data/output/mock_run"
   },
+  "execution": {
+    "default_input_dir": "data/input/sql_scripts",
+    "result_suffix": "_bq"
+  },
   "llm": {
     "base_url": "http://127.0.0.1:8000",
     "model": "claude-haiku-4-5",

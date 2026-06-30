@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Callable
+from contextlib import closing
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -90,7 +91,10 @@ def run(
     artifact_dir = Path(paths["run_dir"])
     trace_path = artifact_dir / f"run_trace_{timestamp}.json"
     try:
-        with connect_sqlite(paths["oracle_db"]) as oracle_conn, connect_sqlite(paths["bigquery_db"]) as bq_conn:
+        with (
+            closing(connect_sqlite(paths["oracle_db"])) as oracle_conn,
+            closing(connect_sqlite(paths["bigquery_db"])) as bq_conn,
+        ):
             pure_sql, resolved = materialize_variables(source_script, oracle_conn)
             record("Stage 1 materialized variables: %s", resolved)
             recorder.add(
@@ -321,6 +325,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Oracle-to-BigQuery mock pipeline.")
     parser.add_argument("--config", default=None, help="Path to a pipeline JSON config file.")
     parser.add_argument("--output-dir", default=None, help="Override the configured output directory.")
+    parser.add_argument("--input-sql", default=None, help="Run one .sql file through file-backed execution.")
+    parser.add_argument("--input-dir", default=None, help="Directory for batch .sql execution.")
+    parser.add_argument("--batch", action="store_true", help="Batch-run .sql files from --input-dir or config.")
+    parser.add_argument("--result-suffix", default=None, help="Sibling result directory suffix, default from config.")
     parser.add_argument("--use-local-hub", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--simulate-repair-path", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--repair-limit", type=int, default=None)
@@ -354,6 +362,8 @@ def main(argv: list[str] | None = None) -> int:
         simulate_repair_path=args.simulate_repair_path,
         repair_limit=args.repair_limit,
         output_dir=args.output_dir,
+        execution_input_dir=args.input_dir,
+        execution_result_suffix=args.result_suffix,
         trace_enabled=args.trace,
         trace_verbose=args.trace_verbose,
         trace_capture_llm_payloads=args.trace_capture_llm_payloads,
@@ -367,6 +377,31 @@ def main(argv: list[str] | None = None) -> int:
         llm_user_prompt_template=args.llm_user_prompt_template,
         llm_extra_parameters=llm_extra_parameters,
     )
+    if args.input_sql:
+        from src.execution import run_sql_file
+
+        result = run_sql_file(args.input_sql, pipeline_config=config, result_suffix=args.result_suffix)
+        print(f"script={result.script_path}")
+        print(f"status={result.status}")
+        print(f"result_dir={result.result_dir}")
+        print(f"final_sql={result.artifacts['final_bigquery_sql']}")
+        print(f"report_json={result.artifacts['run_report_json']}")
+        if "run_trace_json" in result.artifacts:
+            print(f"trace_json={result.artifacts['run_trace_json']}")
+        print(f"log_txt={result.artifacts['run_log_txt']}")
+        return 0
+    if args.batch:
+        from src.execution import run_sql_batch
+
+        directory = args.input_dir or config.execution.default_input_dir
+        results = run_sql_batch(directory, pipeline_config=config, result_suffix=args.result_suffix)
+        print(f"batch_dir={directory}")
+        print(f"scripts={len(results)}")
+        for result in results:
+            suffix = f" error={result.error}" if result.error else ""
+            print(f"{result.script_path} status={result.status} result_dir={result.result_dir}{suffix}")
+        return 0 if all(result.status == "validated" for result in results) else 1
+
     report = run(pipeline_config=config)
     print(f"status={report.status}")
     print(f"final_sql={report.artifacts['final_bigquery_sql']}")

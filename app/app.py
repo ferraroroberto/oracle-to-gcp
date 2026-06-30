@@ -77,9 +77,9 @@ nav_pages = [
     st.Page(welcome.render, title="Overview", icon=":material/database:", url_path="welcome", default=True),
     st.Page(
         translator_demo.render,
-        title="Translator Demo",
+        title="Execution",
         icon=":material/transform:",
-        url_path="translator-demo",
+        url_path="execution",
     ),
 ]
 

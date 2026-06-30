@@ -32,7 +32,11 @@ Or use:
 .\launch_app.bat
 ```
 
-Open the **Translator Demo** page and click **Run mock translation**.
+Open the **Execution** page. The page has three tabs:
+
+- **Demo** — runs the built-in mock script.
+- **Execution** — runs one `.sql` file or every `.sql` file in a directory.
+- **Configuration** — edits and saves `config/pipeline.json` from the app.
 
 ## Mock Inputs
 
@@ -51,7 +55,18 @@ Pipeline defaults live in:
 config/pipeline.json
 ```
 
-That file controls the local hub endpoint, model, timeout, temperature, prompt messages, extra model parameters, repair settings, output directory, and trace/debug capture. Streamlit reads the same JSON file and shows the active prompt plus model parameters before a run.
+That file controls the local hub endpoint, model, timeout, temperature, prompt messages, extra model parameters, repair settings, output directory, file-backed execution defaults, and trace/debug capture. Streamlit reads the same JSON file and shows the active prompt plus model parameters before a run.
+
+File-backed execution defaults:
+
+```json
+{
+  "execution": {
+    "default_input_dir": "data/input/sql_scripts",
+    "result_suffix": "_bq"
+  }
+}
+```
 
 By default the app attempts an OpenAI-shape request to:
 
@@ -97,6 +112,25 @@ Use another config file or one-run overrides:
   --llm-extra-json '{"max_tokens": 1200}'
 ```
 
+Run one SQL file:
+
+```powershell
+& .\.venv\Scripts\python.exe -m src.pipelines.oracle_to_bigquery `
+  --input-sql E:\path\to\script.sql `
+  --no-use-local-hub `
+  --trace
+```
+
+Run every `.sql` file in a directory, non-recursively:
+
+```powershell
+& .\.venv\Scripts\python.exe -m src.pipelines.oracle_to_bigquery `
+  --batch `
+  --input-dir E:\path\to\sql-folder `
+  --no-use-local-hub `
+  --trace
+```
+
 Expected artifacts:
 
 - `data/output/mock_run/final_bigquery.sql`
@@ -107,6 +141,8 @@ Expected artifacts:
 
 The trace JSON is the browsable audit trail for a run. In trace/debug mode it records pipeline stages, materialized variables, ordered SQL units, mappings, row-count checks, every translation attempt, LLM request/response payloads, model parameters, query result samples, validation fingerprints, repair iterations, errors, and artifact paths.
 
+For file-backed execution, each input `script.sql` writes a sibling result directory named `script_bq` by default. That folder contains the final BigQuery SQL, report JSON, trace JSON, mock database artifacts, a copy of the source SQL, and a text log. The Streamlit Execution tab can load previous results from those result folders after the app is reopened.
+
 ## Layout
 
 ```text
@@ -114,11 +150,12 @@ app/
   app.py                         Streamlit entry point
   views/
     welcome.py                   Overview page
-    translator_demo.py           Inspectable mock translator UI
+    translator_demo.py           Demo, file execution, config, and result loader UI
 examples/
   demo_oracle_script.sql         Fictitious Oracle script
   mapping_registry.json          Source-to-target table mapping
 src/
+  execution.py                   File-backed single/batch execution helpers
   llm_client.py                  Local hub client
   mock_environment.py            SQLite mock data bootstrap
   sql_processing.py              Materialization, splitting, table extraction
