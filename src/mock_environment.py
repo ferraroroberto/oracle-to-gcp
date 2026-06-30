@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from src.config import EXAMPLES_DIR, INPUT_DIR, OUTPUT_DIR
@@ -62,7 +63,7 @@ def connect_sqlite(path: Path) -> sqlite3.Connection:
 
 
 def _seed_oracle(path: Path) -> None:
-    with connect_sqlite(path) as conn:
+    with closing(connect_sqlite(path)) as conn:
         conn.executescript(
             """
             CREATE TABLE sales_orders (
@@ -108,7 +109,7 @@ def _seed_oracle(path: Path) -> None:
 
 
 def _seed_bigquery(path: Path, oracle_path: Path) -> None:
-    with connect_sqlite(path) as conn:
+    with closing(connect_sqlite(path)) as conn:
         conn.executescript(
             """
             CREATE TABLE raw_sales_orders (

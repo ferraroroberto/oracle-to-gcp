@@ -32,6 +32,7 @@ def test_pipeline_config_loads_json_and_applies_overrides(tmp_path) -> None:
         json.dumps(
             {
                 "run": {"use_local_hub": False, "repair_limit": 1, "output_dir": "data/output/custom"},
+                "execution": {"default_input_dir": "data/input/custom_sql", "result_suffix": "_translated"},
                 "llm": {"model": "test-model", "temperature": 0.2},
                 "trace": {"enabled": False},
             }
@@ -50,6 +51,8 @@ def test_pipeline_config_loads_json_and_applies_overrides(tmp_path) -> None:
 
     assert loaded.run.use_local_hub is False
     assert loaded.run.repair_limit == 1
+    assert loaded.execution.default_input_dir == "data/input/custom_sql"
+    assert loaded.execution.result_suffix == "_translated"
     assert loaded.llm.model == "test-model"
     assert overridden.run.use_local_hub is True
     assert overridden.run.repair_limit == 4

@@ -23,6 +23,14 @@ class RunOptions:
 
 
 @dataclass(slots=True)
+class ExecutionConfig:
+    """Configurable file-backed execution defaults."""
+
+    default_input_dir: str = "data/input/sql_scripts"
+    result_suffix: str = "_bq"
+
+
+@dataclass(slots=True)
 class LLMConfig:
     """Configurable OpenAI-shape local hub request settings."""
 
@@ -58,6 +66,7 @@ class PipelineConfig:
     """Complete pipeline configuration loaded from JSON."""
 
     run: RunOptions = field(default_factory=RunOptions)
+    execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     trace: TraceConfig = field(default_factory=TraceConfig)
     path: str = ""
@@ -74,6 +83,7 @@ def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
     raw = json.loads(config_path.read_text(encoding="utf-8"))
     return PipelineConfig(
         run=RunOptions(**raw.get("run", {})),
+        execution=ExecutionConfig(**raw.get("execution", {})),
         llm=LLMConfig(**raw.get("llm", {})),
         trace=TraceConfig(**raw.get("trace", {})),
         path=str(config_path),
@@ -83,9 +93,25 @@ def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
 def config_to_dict(config: PipelineConfig) -> dict[str, Any]:
     """Return a JSON-serializable config dictionary."""
     data = asdict(config)
-    if not data["path"]:
-        data.pop("path")
+    data.pop("path", None)
     return data
+
+
+def write_pipeline_config(path: Path | str, raw: dict[str, Any]) -> PipelineConfig:
+    """Validate and write a pipeline JSON config file."""
+    config_path = Path(path)
+    if not config_path.is_absolute():
+        config_path = ROOT_DIR / config_path
+    validated = PipelineConfig(
+        run=RunOptions(**raw.get("run", {})),
+        execution=ExecutionConfig(**raw.get("execution", {})),
+        llm=LLMConfig(**raw.get("llm", {})),
+        trace=TraceConfig(**raw.get("trace", {})),
+        path=str(config_path),
+    )
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(json.dumps(config_to_dict(validated), indent=2) + "\n", encoding="utf-8")
+    return validated
 
 
 def resolve_output_dir(output_dir: str) -> Path:
@@ -101,6 +127,8 @@ def with_overrides(
     simulate_repair_path: bool | None = None,
     repair_limit: int | None = None,
     output_dir: str | None = None,
+    execution_input_dir: str | None = None,
+    execution_result_suffix: str | None = None,
     trace_enabled: bool | None = None,
     trace_verbose: bool | None = None,
     trace_capture_llm_payloads: bool | None = None,
@@ -124,6 +152,12 @@ def with_overrides(
         run_updates["repair_limit"] = repair_limit
     if output_dir is not None:
         run_updates["output_dir"] = output_dir
+
+    execution_updates: dict[str, Any] = {}
+    if execution_input_dir is not None:
+        execution_updates["default_input_dir"] = execution_input_dir
+    if execution_result_suffix is not None:
+        execution_updates["result_suffix"] = execution_result_suffix
 
     trace_updates: dict[str, Any] = {}
     if trace_enabled is not None:
@@ -156,6 +190,7 @@ def with_overrides(
     return replace(
         config,
         run=replace(config.run, **run_updates),
+        execution=replace(config.execution, **execution_updates),
         trace=replace(config.trace, **trace_updates),
         llm=replace(config.llm, **llm_updates),
     )
