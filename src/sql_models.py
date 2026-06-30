@@ -35,3 +35,4 @@ class RunReport:
     final_bigquery_script: str
     artifacts: dict[str, str]
     log: list[str] = field(default_factory=list)
+    trace: list[dict[str, Any]] = field(default_factory=list)

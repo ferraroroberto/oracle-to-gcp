@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from src.llm_client import LocalHubClient
+from src.pipeline_config import LLMConfig
 from src.sql_processing import extract_targets
 
 
@@ -17,11 +18,15 @@ class TranslationEngine:
         use_local_hub: bool = True,
         simulate_first_attempt_mismatch: bool = False,
         client: LocalHubClient | None = None,
+        llm_config: LLMConfig | None = None,
     ) -> None:
         self.use_local_hub = use_local_hub
         self.simulate_first_attempt_mismatch = simulate_first_attempt_mismatch
-        self.client = client or LocalHubClient()
+        self.client = client or (
+            LocalHubClient.from_config(llm_config) if llm_config is not None else LocalHubClient()
+        )
         self.last_note = ""
+        self.last_llm_response = None
 
     def translate(
         self,
@@ -31,8 +36,10 @@ class TranslationEngine:
         attempt: int = 0,
     ) -> tuple[str, str]:
         """Return BigQuery SQL and the provider label used for the unit."""
+        self.last_llm_response = None
         if self.use_local_hub:
             response = self.client.translate(oracle_sql, mapping)
+            self.last_llm_response = response
             if response.text and _candidate_uses_known_tables(response.text, mapping):
                 self.last_note = "local hub candidate accepted"
                 return response.text, response.provider
