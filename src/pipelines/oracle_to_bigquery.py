@@ -24,6 +24,7 @@ from src.pipeline_config import (
     resolve_output_dir,
     with_overrides,
 )
+from src.preflight import run_table_preflight
 from src.sql_models import RunReport, SqlUnit
 from src.sql_processing import build_units, materialize_variables
 from src.trace import TraceRecorder
@@ -110,23 +111,38 @@ def run(
             record("Stage 2 split script into %d ordered units", len(units))
             recorder.add("split", "units_built", {"unit_count": len(units), "units": [_unit_summary(unit) for unit in units]})
 
+            preflight = run_table_preflight(
+                units=units,
+                pipeline_config=active_config,
+                legacy_mapping=mapping_registry,
+                oracle_conn=oracle_conn,
+                bigquery_conn=bq_conn,
+                registry_path=active_config.execution.table_registry_path,
+            )
+            record("Stage 3 table preflight: %s", "; ".join(preflight.messages))
+            recorder.add("preflight", "table_readiness_checked", preflight.to_dict())
+            if not preflight.can_run:
+                raise ValueError("table preflight failed: " + "; ".join(preflight.messages))
+
+            registry_mapping = {row.oracle_table: row.bigquery_table for row in preflight.mappings if row.ready}
             intermediate_mapping = _target_mapping(units)
-            active_mapping = {**mapping_registry, **intermediate_mapping}
+            active_mapping = {**mapping_registry, **registry_mapping, **intermediate_mapping}
             _assert_all_sources_mapped(units, active_mapping)
             recorder.add(
                 "mapping",
                 "active_mapping_ready",
                 {
                     "registry": mapping_registry,
+                    "registry_ready_mapping": registry_mapping,
                     "intermediate_mapping": intermediate_mapping,
                     "active_mapping": active_mapping,
                 },
             )
             for unit in units:
-                external_sources = [source for source in unit.sources if source in mapping_registry]
-                checks = assert_rowcount_parity(oracle_conn, bq_conn, mapping_registry, external_sources)
+                external_sources = [source for source in unit.sources if source in registry_mapping]
+                checks = assert_rowcount_parity(oracle_conn, bq_conn, registry_mapping, external_sources)
                 if checks:
-                    record("Stage 3 row-count parity for unit %d: %s", unit.id, checks)
+                    record("Stage 4 row-count parity for unit %d: %s", unit.id, checks)
                     recorder.add("validation", "rowcount_parity", {"unit_id": unit.id, "checks": checks})
 
             translator = TranslationEngine(

@@ -136,7 +136,7 @@ def test_batch_execution_continues_after_script_failure(tmp_path) -> None:
 
     assert [result.script_path.name for result in results] == ["bad.sql", "good.sql"]
     assert results[0].status == "failed"
-    assert "unmapped source table" in results[0].error
+    assert "table preflight failed" in results[0].error
     assert results[1].status == "validated"
 
 

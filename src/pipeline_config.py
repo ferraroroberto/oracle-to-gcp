@@ -28,16 +28,21 @@ class ExecutionConfig:
 
     default_input_dir: str = "data/input/sql_scripts"
     result_suffix: str = "_bq"
+    table_registry_path: str = "data/table_registry.db"
 
 
 @dataclass(slots=True)
 class LLMConfig:
-    """Configurable OpenAI-shape local hub request settings."""
+    """Configurable LLM request settings."""
 
     base_url: str = LLM_BASE_URL
     model: str = LLM_MODEL
     timeout_seconds: float = LLM_TIMEOUT_SECONDS
     temperature: float = 0
+    request_format: str = "openai_chat"
+    auth_mode: str = "bearer"
+    api_key_env_var: str = "LLM_API_KEY"
+    authorization_header_env_var: str = ""
     system_message: str = (
         "You are a deterministic SQL dialect translator. "
         "Do not invent tables. Return one SQL statement."
@@ -48,6 +53,43 @@ class LLMConfig:
         "{mapping_json}\n\n{oracle_sql}"
     )
     extra_parameters: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class GoogleCloudConfig:
+    """Google Cloud project and OAuth/application-default metadata."""
+
+    project_id: str = "mock-gcp-project"
+    location: str = "EU"
+    auth_mode: str = "mock"
+    credentials_env_var: str = "GOOGLE_APPLICATION_CREDENTIALS"
+    oauth_client_env_var: str = "GOOGLE_OAUTH_CLIENT_SECRET"
+    scopes: list[str] = field(default_factory=lambda: ["https://www.googleapis.com/auth/cloud-platform"])
+
+
+@dataclass(slots=True)
+class BigQueryConfig:
+    """BigQuery target defaults and credential references."""
+
+    project_id: str = "mock-gcp-project"
+    dataset: str = "mock_dataset"
+    location: str = "EU"
+    auth_mode: str = "mock"
+    credentials_env_var: str = "GOOGLE_APPLICATION_CREDENTIALS"
+
+
+@dataclass(slots=True)
+class OracleConfig:
+    """Oracle source defaults and environment-backed secret references."""
+
+    host: str = "mock-oracle.local"
+    port: int = 1521
+    service_name: str = "ORCLPDB1"
+    sid: str = ""
+    default_schema: str = "DEMO"
+    username_env_var: str = "ORACLE_USERNAME"
+    password_env_var: str = "ORACLE_PASSWORD"
+    auth_mode: str = "mock"
 
 
 @dataclass(slots=True)
@@ -68,6 +110,9 @@ class PipelineConfig:
     run: RunOptions = field(default_factory=RunOptions)
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
+    google_cloud: GoogleCloudConfig = field(default_factory=GoogleCloudConfig)
+    bigquery: BigQueryConfig = field(default_factory=BigQueryConfig)
+    oracle: OracleConfig = field(default_factory=OracleConfig)
     trace: TraceConfig = field(default_factory=TraceConfig)
     path: str = ""
 
@@ -85,6 +130,9 @@ def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
         run=RunOptions(**raw.get("run", {})),
         execution=ExecutionConfig(**raw.get("execution", {})),
         llm=LLMConfig(**raw.get("llm", {})),
+        google_cloud=GoogleCloudConfig(**raw.get("google_cloud", {})),
+        bigquery=BigQueryConfig(**raw.get("bigquery", {})),
+        oracle=OracleConfig(**raw.get("oracle", {})),
         trace=TraceConfig(**raw.get("trace", {})),
         path=str(config_path),
     )
@@ -106,6 +154,9 @@ def write_pipeline_config(path: Path | str, raw: dict[str, Any]) -> PipelineConf
         run=RunOptions(**raw.get("run", {})),
         execution=ExecutionConfig(**raw.get("execution", {})),
         llm=LLMConfig(**raw.get("llm", {})),
+        google_cloud=GoogleCloudConfig(**raw.get("google_cloud", {})),
+        bigquery=BigQueryConfig(**raw.get("bigquery", {})),
+        oracle=OracleConfig(**raw.get("oracle", {})),
         trace=TraceConfig(**raw.get("trace", {})),
         path=str(config_path),
     )

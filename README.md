@@ -32,16 +32,19 @@ Or use:
 .\launch_app.bat
 ```
 
-Open the **Execution** page. The page has three tabs:
+Open the **Execution** page. The page has five tabs:
 
 - **Demo** — runs the built-in mock script.
 - **Execution** — runs one `.sql` file or every `.sql` file in a directory.
-- **Configuration** — edits and saves `config/pipeline.json` from the app.
+- **Connection Configuration** — edits structured LLM, Google Cloud/BigQuery, and Oracle connection metadata and runs mock-safe connection tests.
+- **Table Correspondence** — maintains the durable Oracle↔BigQuery registry, including CSV template download, CSV import, CSV export, and one-row manual edits.
+- **Advanced JSON** — edits and saves the raw `config/pipeline.json` for advanced changes.
 
 ## Mock Inputs
 
 - Oracle demo script: `examples/demo_oracle_script.sql`
-- Mapping registry: `examples/mapping_registry.json`
+- Legacy seed mapping registry: `examples/mapping_registry.json`
+- Durable correspondence registry: `data/table_registry.db`
 - Runtime copies: `data/input/`
 - Generated artifacts: `data/output/mock_run/`
 
@@ -55,7 +58,9 @@ Pipeline defaults live in:
 config/pipeline.json
 ```
 
-That file controls the local hub endpoint, model, timeout, temperature, prompt messages, extra model parameters, repair settings, output directory, file-backed execution defaults, and trace/debug capture. Streamlit reads the same JSON file and shows the active prompt plus model parameters before a run.
+That file controls the local hub endpoint, model, timeout, temperature, prompt messages, extra model parameters, Google Cloud/BigQuery metadata, Oracle metadata, repair settings, output directory, file-backed execution defaults, the table registry path, and trace/debug capture. Streamlit reads the same JSON file and shows the active prompt plus model parameters before a run.
+
+Secrets do not belong in `config/pipeline.json`. Store only environment variable names there, then put real values in `.env` or the process environment. Common references are `LLM_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_OAUTH_CLIENT_SECRET`, `ORACLE_USERNAME`, and `ORACLE_PASSWORD`. Connection test results and UI JSON dumps redact sensitive keys.
 
 File-backed execution defaults:
 
@@ -63,7 +68,8 @@ File-backed execution defaults:
 {
   "execution": {
     "default_input_dir": "data/input/sql_scripts",
-    "result_suffix": "_bq"
+    "result_suffix": "_bq",
+    "table_registry_path": "data/table_registry.db"
   }
 }
 ```
@@ -139,7 +145,9 @@ Expected artifacts:
 - `data/output/mock_run/oracle_mock.db`
 - `data/output/mock_run/bigquery_mock.db`
 
-The trace JSON is the browsable audit trail for a run. In trace/debug mode it records pipeline stages, materialized variables, ordered SQL units, mappings, row-count checks, every translation attempt, LLM request/response payloads, model parameters, query result samples, validation fingerprints, repair iterations, errors, and artifact paths.
+The trace JSON is the browsable audit trail for a run. In trace/debug mode it records pipeline stages, materialized variables, ordered SQL units, table preflight go/no-go results, mappings, row-count checks, every translation attempt, LLM request/response payloads, model parameters, query result samples, validation fingerprints, repair iterations, errors, and artifact paths.
+
+Before translation starts, the pipeline runs a table-readiness preflight. It extracts external source tables from the SQL, seeds known demo mappings into the durable registry, inserts unknown source tables as `pending`, probes mapped Oracle and BigQuery mock tables with a cheap `LIMIT 1` read, records reachability timestamps, and stops before translation if any required table is unmapped or unreachable. The **Table Correspondence** tab is the user-friendly maintenance surface: download the CSV template, fill or edit it in a spreadsheet, import it back, or export the current SQLite registry for review.
 
 For file-backed execution, each input `script.sql` writes a sibling result directory named `script_bq` by default. That folder contains the final BigQuery SQL, report JSON, trace JSON, mock database artifacts, a copy of the source SQL, and a text log. The Streamlit Execution tab can load previous results from those result folders after the app is reopened.
 
@@ -156,9 +164,12 @@ examples/
   mapping_registry.json          Source-to-target table mapping
 src/
   execution.py                   File-backed single/batch execution helpers
+  connections.py                 Mock-safe connection test helpers
   llm_client.py                  Local hub client
   mock_environment.py            SQLite mock data bootstrap
+  preflight.py                   Table readiness go/no-go checks
   sql_processing.py              Materialization, splitting, table extraction
+  table_registry.py              SQLite correspondence registry + CSV import/export
   translator.py                  Bounded translation function
   validation.py                  Dual execution and fingerprints
   pipelines/oracle_to_bigquery.py End-to-end orchestrator
