@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import json
+
 from src.mock_environment import bootstrap_mock_environment, connect_sqlite, load_demo_script
+from src.pipeline_config import load_pipeline_config, with_overrides
 from src.pipelines.oracle_to_bigquery import run
+from src.pipelines.oracle_to_bigquery import main as pipeline_main
 from src.sql_processing import build_units, materialize_variables
 
 
@@ -30,3 +34,47 @@ def test_demo_pipeline_validates_and_repairs_with_mock_data(tmp_path) -> None:
     assert all(unit.status == "validated" for unit in report.units)
     assert "CREATE OR REPLACE TABLE scratch_daily_revenue AS" in report.final_bigquery_script
     assert "raw_sales_orders" in report.final_bigquery_script
+
+
+def test_trace_artifact_captures_steps_queries_and_llm_payloads(tmp_path) -> None:
+    config = with_overrides(
+        load_pipeline_config(),
+        use_local_hub=True,
+        simulate_repair_path=True,
+        output_dir=str(tmp_path),
+        trace_enabled=True,
+    )
+    config.llm.base_url = "http://127.0.0.1:1"
+    config.llm.timeout_seconds = 0.01
+
+    report = run(pipeline_config=config)
+    trace_path = report.artifacts["run_trace_json"]
+    trace = json.loads(open(trace_path, encoding="utf-8").read())
+    events = {(event["stage"], event["event"]) for event in trace["events"]}
+
+    assert report.status == "validated"
+    assert ("llm", "call_finished") in events
+    assert ("execution", "oracle_unit_executed") in events
+    assert ("execution", "bigquery_unit_executed") in events
+    assert ("validation", "fingerprints_compared") in events
+    assert any(event["details"].get("request_payload") for event in trace["events"] if event["stage"] == "llm")
+    assert any(event["details"].get("rows") for event in trace["events"] if event["stage"] == "execution")
+
+
+def test_cli_overrides_config_and_prints_trace_path(tmp_path, capsys) -> None:
+    exit_code = pipeline_main(
+        [
+            "--output-dir",
+            str(tmp_path),
+            "--no-use-local-hub",
+            "--repair-limit",
+            "1",
+            "--trace",
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "status=validated" in output
+    assert "trace_json=" in output
+    assert (tmp_path / "final_bigquery.sql").is_file()

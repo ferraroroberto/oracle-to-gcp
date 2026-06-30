@@ -45,6 +45,14 @@ The demo script declares `v_run_date`, resolves it from `sales_orders`, creates 
 
 ## Local LLM Hub
 
+Pipeline defaults live in:
+
+```text
+config/pipeline.json
+```
+
+That file controls the local hub endpoint, model, timeout, temperature, prompt messages, extra model parameters, repair settings, output directory, and trace/debug capture. Streamlit reads the same JSON file and shows the active prompt plus model parameters before a run.
+
 By default the app attempts an OpenAI-shape request to:
 
 ```text
@@ -75,12 +83,29 @@ Run the complete mock without the UI:
 & .\.venv\Scripts\python.exe -m src.pipelines.oracle_to_bigquery
 ```
 
+Use another config file or one-run overrides:
+
+```powershell
+& .\.venv\Scripts\python.exe -m src.pipelines.oracle_to_bigquery `
+  --config config\pipeline.json `
+  --no-use-local-hub `
+  --repair-limit 2 `
+  --trace `
+  --trace-max-query-rows 100 `
+  --llm-model claude-haiku-4-5 `
+  --llm-temperature 0 `
+  --llm-extra-json '{"max_tokens": 1200}'
+```
+
 Expected artifacts:
 
 - `data/output/mock_run/final_bigquery.sql`
 - `data/output/mock_run/run_report_<timestamp>.json`
+- `data/output/mock_run/run_trace_<timestamp>.json`
 - `data/output/mock_run/oracle_mock.db`
 - `data/output/mock_run/bigquery_mock.db`
+
+The trace JSON is the browsable audit trail for a run. In trace/debug mode it records pipeline stages, materialized variables, ordered SQL units, mappings, row-count checks, every translation attempt, LLM request/response payloads, model parameters, query result samples, validation fingerprints, repair iterations, errors, and artifact paths.
 
 ## Layout
 

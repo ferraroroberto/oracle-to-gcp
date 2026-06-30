@@ -1,0 +1,24 @@
+{
+  "run": {
+    "use_local_hub": true,
+    "simulate_repair_path": true,
+    "repair_limit": 3,
+    "output_dir": "data/output/mock_run"
+  },
+  "llm": {
+    "base_url": "http://127.0.0.1:8000",
+    "model": "claude-haiku-4-5",
+    "timeout_seconds": 8,
+    "temperature": 0,
+    "system_message": "You are a deterministic SQL dialect translator. Do not invent tables. Return one SQL statement.",
+    "user_prompt_template": "Translate this Oracle SQL statement to BigQuery Standard SQL. Return only SQL, no markdown. Use this lower-case table mapping: {mapping_json}\n\n{oracle_sql}",
+    "extra_parameters": {}
+  },
+  "trace": {
+    "enabled": true,
+    "verbose": true,
+    "capture_llm_payloads": true,
+    "capture_query_results": true,
+    "max_query_rows": 50
+  }
+}
