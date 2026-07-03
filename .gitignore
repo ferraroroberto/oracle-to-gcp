@@ -23,6 +23,7 @@ data/input/*
 !data/logs/.gitkeep
 !data/output/.gitkeep
 !data/input/.gitkeep
+data/table_registry.db
 
 # IDE
 .vscode/
