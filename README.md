@@ -154,6 +154,31 @@ Before translation starts, the pipeline runs a table-readiness and schema prefli
 
 For file-backed execution, each input `script.sql` writes a sibling result directory named `script_bq` by default. That folder contains the final BigQuery SQL, report JSON, trace JSON, mock database artifacts, a copy of the source SQL, and a text log. The Streamlit Execution tab can load previous results from those result folders after the app is reopened.
 
+## Standalone Schema Audit
+
+The repository also includes an experimental, config-driven schema audit module for the production-shaped step between table correspondence and SQL translation. It reads CSV, JSON, or Excel table pairs with `oracle_schema`, `oracle_table`, `bigquery_project`, `bigquery_dataset`, and `bigquery_table`, fetches authoritative column metadata from Oracle and BigQuery, compares column presence/type families/shape, and writes machine-readable reports for downstream translation.
+
+The default config template lives at:
+
+```text
+unit_test/schema_audit_config.json
+```
+
+Run it with:
+
+```powershell
+& .\.venv\Scripts\python.exe -m unit_test.schema_compatibility_audit --config unit_test\schema_audit_config.json
+```
+
+By default the production adapters expect Oracle credentials in `ORACLE_USERNAME`, `ORACLE_PASSWORD`, and `ORACLE_DSN`, plus Google Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS` for BigQuery. Excel input uses `pandas` and `openpyxl`. The module also ships SQLite adapters for local experiments and tests. Metadata is the source of truth; optional row sampling is recorded only as evidence in the output reports and does not drive compatibility decisions.
+
+Expected outputs are CSV and JSON files under `data/output/schema_audit/` unless overridden in the config:
+
+- `column_report.csv` / `column_report.json` — one row per compared column.
+- `table_summary.csv` / `table_summary.json` — one row per table pair.
+
+This does not replace the mock pipeline preflight yet. The existing `src.preflight` path still blocks mock translation runs and persists compatibility rows into the SQLite table registry. The standalone audit is for proving the production metadata approach before wiring it into the main pipeline.
+
 ## Layout
 
 ```text
@@ -176,8 +201,12 @@ src/
   translator.py                  Bounded translation function
   validation.py                  Dual execution and fingerprints
   pipelines/oracle_to_bigquery.py End-to-end orchestrator
+unit_test/
+  schema_compatibility_audit.py   Standalone Oracle/BQ schema audit experiment
+  schema_audit_config.json        Config template for the schema audit
 tests/
   test_oracle_to_bigquery.py     Mock pipeline tests
+  test_schema_compatibility_audit.py Standalone schema audit tests
   e2e/test_smoke.py              Streamlit boot smoke test
 ```
 

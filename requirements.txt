@@ -1,4 +1,6 @@
 streamlit>=1.30.0
+pandas>=2.2.0
+openpyxl>=3.1.0
 
 # Testing — unit (pytest) + headless e2e (pytest-playwright).
 # After install: .venv\Scripts\python.exe -m playwright install chromium
