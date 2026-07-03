@@ -1,0 +1,40 @@
+{
+  "input": {
+    "path": "data/input/table_correspondence.csv",
+    "format": "csv",
+    "columns": {
+      "oracle_schema": "oracle_schema",
+      "oracle_table": "oracle_table",
+      "bigquery_project": "bigquery_project",
+      "bigquery_dataset": "bigquery_dataset",
+      "bigquery_table": "bigquery_table"
+    }
+  },
+  "oracle": {
+    "mode": "oracle",
+    "username_env_var": "ORACLE_USERNAME",
+    "password_env_var": "ORACLE_PASSWORD",
+    "dsn_env_var": "ORACLE_DSN"
+  },
+  "bigquery": {
+    "mode": "bigquery",
+    "project_id": "mock-gcp-project",
+    "credentials_env_var": "GOOGLE_APPLICATION_CREDENTIALS"
+  },
+  "comparison": {
+    "case_sensitive_columns": false
+  },
+  "sampling": {
+    "enabled": false,
+    "max_rows": 1000
+  },
+  "output": {
+    "detail_csv": "data/output/schema_audit/column_report.csv",
+    "summary_csv": "data/output/schema_audit/table_summary.csv",
+    "detail_json": "data/output/schema_audit/column_report.json",
+    "summary_json": "data/output/schema_audit/table_summary.json"
+  },
+  "logging": {
+    "level": "INFO"
+  }
+}
