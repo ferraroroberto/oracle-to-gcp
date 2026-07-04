@@ -37,6 +37,10 @@ This repo ships no tray, no PWA, and no long-lived background service — `launc
 
 **Restart safely.** Close the console window `launch_app.bat` opened (or `Ctrl+C` inside it) rather than killing Python processes by name — a name-based kill risks taking down an unrelated Python process on the same machine. Re-run `launch_app.bat` (or `& .\.venv\Scripts\python.exe -m streamlit run app\app.py`) and confirm the browser reloads the **Execution** page with the new behavior visible before calling a change done.
 
+## Internal architecture
+
+[`docs/architecture.mmd`](docs/architecture.mmd) is a hand-authored Mermaid diagram of this repo's own internal structure (the Streamlit `app/` views, the `src/pipelines/oracle_to_bigquery.py` orchestrator and its mock pipeline stages, the local-LLM-hub dependency, the standalone `unit_test/` schema audit, and `tests/`/`scripts/`) — the per-repo counterpart to the fleet-wide diagram `ferraroroberto/fleet-config`'s `/system-map` generates. Update it in the same PR as any material structural change (a new pipeline stage, a module moved or renamed, a new external dependency) — same anti-staleness contract as a `.fleet.toml` `description` field. It is not auto-generated and not covered by `scripts/verify-before-ship.ps1`.
+
 ## This repository
 Oracle to GCP is a local Streamlit + Python pipeline prototype for translating Oracle SQL scripts to BigQuery Standard SQL through a deterministic, inspectable validation loop. It currently uses SQLite mock databases for the Oracle and BigQuery sides, with the local LLM hub called only as a stateless translation function when available.
 
