@@ -1,0 +1,87 @@
+%% docs/architecture.mmd — oracle-to-gcp's own internal structure.
+%% Hand-authored, not generated — this is the per-repo companion diagram to the
+%% fleet-wide convention established in ferraroroberto/fleet-config#256. There is
+%% no structured source to crawl for a repo's own internal shape, so it is
+%% authored once and kept correct by discipline. Update this diagram in the
+%% same PR as any material structural change (a new pipeline stage, a moved
+%% module, a new external dependency) — same anti-staleness contract as this
+%% repo's own `.fleet.toml` `description` field. See this repo's CLAUDE.md
+%% "Internal architecture" section for the pointer.
+
+flowchart TB
+  subgraph ui["app/ — Streamlit UI"]
+    APP["app.py\nst.set_page_config + sidebar + st.navigation"]
+    WELCOME["views/welcome.py — Overview"]
+    DEMO["views/translator_demo.py\nDemo · Execution · Connection Config ·\nTable Correspondence · Advanced JSON tabs"]
+    PMAP["views/process_map.py — Process Map"]
+  end
+  APP --> WELCOME
+  APP --> DEMO
+  APP --> PMAP
+
+  EXEC["execution.py\nrun_sql_file / run_sql_batch — file-backed execution"]
+  CONN["connections.py\nmock-safe connection tests"]
+  TABLEREG["table_registry.py\nSQLite correspondence registry + CSV import/export"]
+  PIPECFG["pipeline_config.py\nconfig/pipeline.json loader + overrides"]
+  DEMO --> EXEC
+  DEMO --> CONN
+  DEMO --> TABLEREG
+  DEMO --> PIPECFG
+
+  subgraph pipeline["src/pipelines/oracle_to_bigquery.py"]
+    RUN["run() — Stage 0..8 orchestrator"]
+  end
+  EXEC --> RUN
+
+  MOCKENV["mock_environment.py\nbootstrap SQLite Oracle + BigQuery mocks, seed data"]
+  SQLPROC["sql_processing.py\nmaterialize_variables, build_units, table extraction"]
+  PREFLIGHT["preflight.py\ntable readiness + schema compatibility go/no-go"]
+  TRANSLATE["translator.py\nTranslationEngine — local-hub attempt + deterministic fallback"]
+  VALIDATE["validation.py\ndual execution + fingerprint comparison"]
+  TRACE["trace.py\nTraceRecorder — stage-by-stage audit trail"]
+  MODELS["sql_models.py\nSqlUnit, RunReport dataclasses"]
+
+  RUN --> MOCKENV
+  RUN --> SQLPROC
+  RUN --> PREFLIGHT
+  RUN --> TRANSLATE
+  RUN --> VALIDATE
+  RUN --> TRACE
+  RUN --> MODELS
+  RUN --> PIPECFG
+
+  PREFLIGHT --> TABLEREG
+  TABLEREG --> REGDB[("data/table_registry.db")]
+
+  LLMCLIENT["llm_client.py\nLocalHubClient — OpenAI-shape client"]
+  SECRETS["secrets.py\nenv secret lookup + redaction"]
+  TRANSLATE --> LLMCLIENT
+  LLMCLIENT --> SECRETS
+  LLMCLIENT -->|"POST /v1/chat/completions"| HUB[("Local LLM hub\n127.0.0.1:8000 — claude-haiku-4-5 default")]
+
+  CONFIGPY["config.py\nROOT_DIR/DATA_DIR paths + env defaults"]
+  MOCKENV --> CONFIGPY
+  TABLEREG --> CONFIGPY
+  PIPECFG --> CONFIGPY
+
+  ARTIFACTS["data/output/mock_run/\nfinal_bigquery.sql · run_report_*.json ·\nrun_trace_*.json · oracle_mock.db · bigquery_mock.db"]
+  RUN --> ARTIFACTS
+  TRACE --> ARTIFACTS
+
+  subgraph standalone["unit_test/ — standalone production-shaped experiment (not wired into RUN)"]
+    AUDIT["schema_compatibility_audit.py\nCSV/JSON/Excel table pairs -> column diff"]
+  end
+  AUDIT -->|optional, real creds| ORACLEDB[("Oracle DB\nORACLE_USERNAME/PASSWORD/DSN")]
+  AUDIT -->|optional, real creds| BQPROD[("BigQuery\nGOOGLE_APPLICATION_CREDENTIALS")]
+  AUDIT --> AUDITOUT["data/output/schema_audit/\ncolumn_report · table_summary"]
+
+  subgraph testing["tests/ + scripts/"]
+    GATE["scripts/verify-before-ship.ps1\ncompileall + ruff + pytest (incl. e2e)"]
+    UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py"]
+    E2E["tests/e2e/test_smoke.py\nStreamlit boot smoke (Playwright)"]
+  end
+  GATE --> UNIT
+  GATE --> E2E
+  UNIT --> RUN
+  UNIT --> AUDIT
+  E2E --> APP
