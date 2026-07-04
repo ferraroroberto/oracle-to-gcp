@@ -233,3 +233,5 @@ Run the full scaffold gate:
 ## Rationale
 
 The design reasoning and tradeoffs are documented in `docs/architecture-rationale.md`. For an executive visual summary, open `docs/oracle-to-gcp-process-map.html` or the **Process Map** page in Streamlit. The short version: this project treats the LLM as one replaceable stateless function inside a deterministic migration pipeline. The hard parts are parsing, mapping, ordered execution, validation, and auditability.
+
+`docs/build-vs-buy-migration-tooling.md` compares this pipeline against dbt, SQLMesh, sqlglot, Google Dataform, BigQuery-native cost tooling, and OpenLineage/Marquez — none of them do cross-dialect migration validation, which is this project's actual differentiator.
