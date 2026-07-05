@@ -19,6 +19,6 @@ def render() -> None:
         compares fingerprints, and emits the final BigQuery script plus a JSON
         run report.
 
-        Open **Translator Demo** to run the end-to-end mock.
+        Open **Execution** and its **Demo** tab to run the end-to-end mock.
         """
     )
