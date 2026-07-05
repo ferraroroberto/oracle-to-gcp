@@ -18,6 +18,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from src.sql_processing import type_family
+
 log = logging.getLogger("schema_compatibility_audit")
 
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("schema_audit_config.json")
@@ -486,26 +488,6 @@ def write_reports(
     _write_json(summary_json, [asdict(row) for row in summaries])
     log.info("Wrote detail report: %s", detail_csv)
     log.info("Wrote summary report: %s", summary_csv)
-
-
-def type_family(raw_type: str) -> str:
-    """Normalize database-specific type text to a migration-relevant family."""
-    normalized = raw_type.upper().strip()
-    if any(token in normalized for token in ("CHAR", "CLOB", "STRING", "TEXT", "VARCHAR")):
-        return "text"
-    if any(token in normalized for token in ("DATE", "TIME", "TIMESTAMP", "DATETIME")):
-        return "temporal"
-    if any(token in normalized for token in ("NUMBER", "NUMERIC", "DECIMAL", "INT", "FLOAT", "DOUBLE", "REAL", "BIGNUMERIC")):
-        return "numeric"
-    if any(token in normalized for token in ("BOOL", "BOOLEAN")):
-        return "boolean"
-    if any(token in normalized for token in ("BLOB", "BYTES", "RAW", "BINARY")):
-        return "bytes"
-    if any(token in normalized for token in ("STRUCT", "RECORD", "ARRAY")):
-        return "complex"
-    if "JSON" in normalized:
-        return "json"
-    return normalized.lower() or "unknown"
 
 
 def _compare_one(
