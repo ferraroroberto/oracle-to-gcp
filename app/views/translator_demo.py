@@ -9,7 +9,8 @@ from typing import Any
 
 import streamlit as st
 
-from src import clear_log_buffer, get_logger, stream_to_streamlit
+from app.log_panel import stream_to_streamlit
+from src import clear_log_buffer, get_logger
 from src.connections import test_all_connections
 from src.execution import (
     ensure_execution_input_dir,
