@@ -146,6 +146,32 @@ def _to_sql_literal(value: object) -> str:
     return f"'{escaped}'"
 
 
+def type_family(raw_type: str) -> str:
+    """Normalize an Oracle/BigQuery type string to a migration-relevant family.
+
+    Single source of truth for column type-family classification — shared by
+    ``src.preflight``'s compatibility check and
+    ``unit_test.schema_compatibility_audit``'s column comparison, which
+    previously each maintained their own independently-drifting copy.
+    """
+    normalized = raw_type.upper().strip()
+    if any(token in normalized for token in ("CHAR", "CLOB", "STRING", "TEXT", "VARCHAR")):
+        return "text"
+    if any(token in normalized for token in ("DATE", "TIME", "TIMESTAMP", "DATETIME")):
+        return "temporal"
+    if any(token in normalized for token in ("NUMBER", "NUMERIC", "DECIMAL", "INT", "FLOAT", "DOUBLE", "REAL", "BIGNUMERIC")):
+        return "numeric"
+    if any(token in normalized for token in ("BOOL", "BOOLEAN")):
+        return "boolean"
+    if any(token in normalized for token in ("BLOB", "BYTES", "RAW", "BINARY")):
+        return "bytes"
+    if any(token in normalized for token in ("STRUCT", "RECORD", "ARRAY")):
+        return "complex"
+    if "JSON" in normalized:
+        return "json"
+    return normalized.lower() or "unknown"
+
+
 def _clean_identifier(identifier: str) -> str:
     return identifier.strip("`\"").split(".")[-1].lower()
 

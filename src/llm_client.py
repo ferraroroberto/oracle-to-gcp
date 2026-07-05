@@ -47,15 +47,10 @@ class LocalHubClient:
         self.model = model
         self.timeout = timeout
         self.temperature = temperature
-        self.system_message = system_message or (
-            "You are a deterministic SQL dialect translator. "
-            "Do not invent tables. Return one SQL statement."
-        )
-        self.user_prompt_template = user_prompt_template or (
-            "Translate this Oracle SQL statement to BigQuery Standard SQL. "
-            "Return only SQL, no markdown. Use this lower-case table mapping: "
-            "{mapping_json}\n\n{oracle_sql}"
-        )
+        # Defaults come from LLMConfig() (single source of truth for the
+        # default prompt text) rather than being hardcoded a second time here.
+        self.system_message = system_message or LLMConfig().system_message
+        self.user_prompt_template = user_prompt_template or LLMConfig().user_prompt_template
         self.extra_parameters = extra_parameters or {}
         self.auth_mode = auth_mode
         self.api_key_env_var = api_key_env_var

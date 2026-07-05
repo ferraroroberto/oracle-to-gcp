@@ -9,6 +9,7 @@ from typing import Any
 
 from src.pipeline_config import PipelineConfig
 from src.sql_models import SqlUnit
+from src.sql_processing import type_family as _type_family
 from src.table_registry import (
     ColumnMapping,
     TableMapping,
@@ -201,19 +202,6 @@ def _table_columns(conn: sqlite3.Connection, table: str) -> dict[str, str]:
 
 def _types_compatible(oracle_type: str, bigquery_type: str) -> bool:
     return _type_family(oracle_type) == _type_family(bigquery_type)
-
-
-def _type_family(raw_type: str) -> str:
-    normalized = raw_type.upper()
-    if any(token in normalized for token in ("INT", "NUM", "DEC", "REAL", "FLOAT", "DOUBLE")):
-        return "numeric"
-    if any(token in normalized for token in ("CHAR", "CLOB", "TEXT", "STRING")):
-        return "text"
-    if any(token in normalized for token in ("DATE", "TIME")):
-        return "temporal"
-    if "BOOL" in normalized:
-        return "boolean"
-    return normalized or "unknown"
 
 
 def _now_iso() -> str:
