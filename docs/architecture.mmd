@@ -40,6 +40,7 @@ flowchart TB
   VALIDATE["validation.py\ndual execution + fingerprint comparison"]
   TRACE["trace.py\nTraceRecorder — stage-by-stage audit trail"]
   MODELS["sql_models.py\nSqlUnit, RunReport dataclasses"]
+  LINEAGE["lineage.py\ndependency-staged lineage map (compute_stages, render_lineage_markdown)"]
 
   RUN --> MOCKENV
   RUN --> SQLPROC
@@ -48,6 +49,7 @@ flowchart TB
   RUN --> VALIDATE
   RUN --> TRACE
   RUN --> MODELS
+  RUN --> LINEAGE
   RUN --> PIPECFG
 
   PREFLIGHT --> TABLEREG
@@ -64,9 +66,10 @@ flowchart TB
   TABLEREG --> CONFIGPY
   PIPECFG --> CONFIGPY
 
-  ARTIFACTS["data/output/mock_run/\nfinal_bigquery.sql · run_report_*.json ·\nrun_trace_*.json · oracle_mock.db · bigquery_mock.db"]
+  ARTIFACTS["data/output/mock_run/\nfinal_bigquery.sql · run_report_*.json · lineage.md ·\nrun_trace_*.json · oracle_mock.db · bigquery_mock.db"]
   RUN --> ARTIFACTS
   TRACE --> ARTIFACTS
+  LINEAGE --> ARTIFACTS
 
   subgraph standalone["unit_test/ — standalone production-shaped experiment (not wired into RUN)"]
     AUDIT["schema_compatibility_audit.py\nCSV/JSON/Excel table pairs -> column diff"]

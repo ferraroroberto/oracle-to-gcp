@@ -434,6 +434,7 @@ def _render_report(report: RunReport) -> None:
 
     st.subheader("Final BigQuery script")
     st.code(report.final_bigquery_script, language="sql")
+    _render_lineage_map(report.artifacts)
     _render_artifacts(report.artifacts, report.trace)
     with st.expander("Full report"):
         st.json(asdict(report))
@@ -444,9 +445,24 @@ def _render_loaded_report(report: dict[str, Any]) -> None:
     st.success(f"Run status: {report.get('status', 'unknown')}")
     st.subheader("Final BigQuery script")
     st.code(str(report.get("final_bigquery_script", "")), language="sql")
+    _render_lineage_map(report.get("artifacts", {}))
     _render_artifacts(report.get("artifacts", {}), report.get("trace", []))
     with st.expander("Full loaded report"):
         st.json(report)
+
+
+def _render_lineage_map(artifacts: dict[str, str]) -> None:
+    lineage_path = artifacts.get("lineage_md")
+    if not lineage_path:
+        return
+    st.subheader("SQL Lineage Map")
+    try:
+        content = Path(lineage_path).read_text(encoding="utf-8")
+    except OSError as exc:
+        st.warning(f"Could not load lineage map: {exc}")
+        return
+    with st.expander("Dependency-staged lineage", expanded=True):
+        st.markdown(content)
 
 
 def _render_artifacts(artifacts: dict[str, str], trace: list[dict[str, Any]]) -> None:

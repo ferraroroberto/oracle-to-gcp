@@ -41,6 +41,24 @@ def test_demo_pipeline_validates_and_repairs_with_mock_data(tmp_path) -> None:
     assert "raw_sales_orders" in report.final_bigquery_script
 
 
+def test_lineage_artifact_stages_demo_tables_by_dependency_depth(tmp_path) -> None:
+    report = run(
+        use_local_hub=False,
+        simulate_repair_path=False,
+        run_dir=tmp_path,
+    )
+
+    lineage_path = report.artifacts["lineage_md"]
+    assert lineage_path == str(tmp_path / "lineage.md")
+    content = open(lineage_path, encoding="utf-8").read()
+
+    assert "## Stage 0 — root sources" in content
+    assert "- `sales_orders`" in content
+    assert "- `customer_segments`" in content
+    assert "`daily_revenue` ← `sales_orders` (unit 1)" in content
+    assert "`daily_revenue` ← `customer_segments` (unit 1)" in content
+
+
 def test_trace_artifact_captures_steps_queries_and_llm_payloads(tmp_path) -> None:
     config = with_overrides(
         load_pipeline_config(),
