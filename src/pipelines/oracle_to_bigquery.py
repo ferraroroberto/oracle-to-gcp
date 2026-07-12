@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from src import get_logger
+from src.lineage import render_lineage_markdown
 from src.mock_environment import (
     bootstrap_mock_environment,
     connect_sqlite,
@@ -178,19 +179,23 @@ def run(
     final_script = "\n\n".join(unit.bq_sql.rstrip(";") + ";" for unit in units)
     script_path = artifact_dir / "final_bigquery.sql"
     report_path = artifact_dir / f"run_report_{timestamp}.json"
+    lineage_path = artifact_dir / "lineage.md"
+    script_id = f"demo-{timestamp}"
     script_path.write_text(final_script + "\n", encoding="utf-8")
+    lineage_path.write_text(render_lineage_markdown(units, script_id=script_id), encoding="utf-8")
 
     status = "validated" if all(unit.status == "validated" for unit in units) else "flagged"
     artifacts = {
         "final_bigquery_sql": str(script_path),
         "run_report_json": str(report_path),
+        "lineage_md": str(lineage_path),
         "oracle_mock_db": str(paths["oracle_db"]),
         "bigquery_mock_db": str(paths["bigquery_db"]),
     }
     if active_config.trace.enabled:
         artifacts["run_trace_json"] = str(trace_path)
     report = RunReport(
-        script_id=f"demo-{timestamp}",
+        script_id=script_id,
         status=status,
         resolved_variables=resolved,
         units=units,
