@@ -75,6 +75,13 @@ flowchart TB
   AUDIT -->|optional, real creds| BQPROD[("BigQuery\nGOOGLE_APPLICATION_CREDENTIALS")]
   AUDIT --> AUDITOUT["data/output/schema_audit/\ncolumn_report · table_summary"]
 
+  subgraph shared["src/ — shared real GCP IO helpers (canonical for the fleet, issue #17)"]
+    GCSIO["gcs_io.py\nupload/download helpers — ADC storage.Client()"]
+    BQIO["bigquery_io.py\nrun_query / execute_script / load_dataframe /\ncompare_dataframe_schema — ADC bigquery.Client()"]
+  end
+  GCSIO -->|optional, ADC| GCS[("Google Cloud Storage")]
+  BQIO -->|optional, real creds| BQPROD
+
   subgraph testing["tests/ + scripts/"]
     GATE["scripts/verify-before-ship.ps1\ncompileall + ruff + pytest (incl. e2e)"]
     UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py"]
