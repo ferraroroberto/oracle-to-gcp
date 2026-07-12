@@ -193,6 +193,15 @@ Expected outputs are CSV and JSON files under `data/output/schema_audit/` unless
 
 This does not replace the mock pipeline preflight yet. The existing `src.preflight` path still blocks mock translation runs and persists compatibility rows into the SQLite table registry. The standalone audit is for proving the production metadata approach before wiring it into the main pipeline.
 
+## Shared Fleet-Wide GCP IO Helpers
+
+`src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume, per the consolidation tracked in issue #17. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
+
+- `gcs_io.py` — `upload_file`, `upload_string`, `download_file`, `download_bytes`, `download_prefix`, all operating on `gs://bucket/path` URIs.
+- `bigquery_io.py` — `run_query` (parameterized query execution), `execute_script` (multi-statement scripts), `fetch_table_schema`, `load_dataframe`, and `compare_dataframe_schema` (schema-compatibility checks with type coercion for loading a DataFrame into an existing BigQuery table).
+
+Sibling repos consume these by vendoring (byte-copying) the module with a provenance comment, since the fleet's `[vendored]`/`propagate-vendored` tooling is scoped to `project-scaffolding` as source today.
+
 ## Layout
 
 ```text
@@ -207,6 +216,8 @@ examples/
 src/
   execution.py                   File-backed single/batch execution helpers
   connections.py                 Mock-safe connection test helpers
+  gcs_io.py                      Shared real GCS upload/download helpers (ADC)
+  bigquery_io.py                 Shared real BigQuery query/schema/load helpers (ADC)
   llm_client.py                  Local hub client
   mock_environment.py            SQLite mock data bootstrap
   preflight.py                   Table readiness go/no-go checks
@@ -221,6 +232,8 @@ unit_test/
 tests/
   test_oracle_to_bigquery.py     Mock pipeline tests
   test_schema_compatibility_audit.py Standalone schema audit tests
+  test_gcs_io.py                 Shared GCS IO helper tests
+  test_bigquery_io.py            Shared BigQuery IO helper tests
   e2e/test_smoke.py              Streamlit boot smoke test
 ```
 
