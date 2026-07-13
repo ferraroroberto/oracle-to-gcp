@@ -79,16 +79,20 @@ class LocalHubClient:
             mapping_json=mapping_json,
             oracle_sql=oracle_sql,
         )
+        return self._call(self.system_message, prompt, strip_sql_fence=True)
+
+    def complete(self, system_message: str, user_message: str) -> LLMResponse:
+        """Call the local hub once with an arbitrary system/user message pair."""
+        return self._call(system_message, user_message, strip_sql_fence=False)
+
+    def _call(self, system_message: str, user_message: str, *, strip_sql_fence: bool) -> LLMResponse:
         endpoint = f"{self.base_url}/v1/chat/completions"
         payload = {
             "model": self.model,
             "temperature": self.temperature,
             "messages": [
-                {
-                    "role": "system",
-                    "content": self.system_message,
-                },
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
             ],
             **self.extra_parameters,
         }
@@ -125,7 +129,7 @@ class LocalHubClient:
                 response_payload=body,
             )
         return LLMResponse(
-            text=_strip_sql_fence(text),
+            text=_strip_sql_fence(text) if strip_sql_fence else text,
             provider="local-hub",
             endpoint=endpoint,
             duration_ms=_elapsed_ms(started),
