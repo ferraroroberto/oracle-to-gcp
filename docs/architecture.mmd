@@ -71,12 +71,17 @@ flowchart TB
   TRACE --> ARTIFACTS
   LINEAGE --> ARTIFACTS
 
-  subgraph standalone["unit_test/ — standalone production-shaped experiment (not wired into RUN)"]
+  subgraph standalone["unit_test/ — standalone production-shaped experiments (not wired into RUN)"]
     AUDIT["schema_compatibility_audit.py\nCSV/JSON/Excel table pairs -> column diff"]
+    COSTAUDIT["query_cost_audit.py\npost-validation run_report.units -> ranked cost + LLM suggestions"]
   end
   AUDIT -->|optional, real creds| ORACLEDB[("Oracle DB\nORACLE_USERNAME/PASSWORD/DSN")]
   AUDIT -->|optional, real creds| BQPROD[("BigQuery\nGOOGLE_APPLICATION_CREDENTIALS")]
   AUDIT --> AUDITOUT["data/output/schema_audit/\ncolumn_report · table_summary"]
+  ARTIFACTS -->|run_report_*.json| COSTAUDIT
+  COSTAUDIT -->|optional, dry-run| BQPROD
+  COSTAUDIT --> LLMCLIENT
+  COSTAUDIT --> COSTOUT["data/output/query_cost_audit/\ncost_report.md"]
 
   subgraph shared["src/ — shared real GCP IO helpers (canonical for the fleet, issue #17)"]
     GCSIO["gcs_io.py\nupload/download helpers — ADC storage.Client()"]
@@ -87,11 +92,12 @@ flowchart TB
 
   subgraph testing["tests/ + scripts/"]
     GATE["scripts/verify-before-ship.ps1\ncompileall + ruff + pytest (incl. e2e)"]
-    UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py"]
+    UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py\ntests/test_query_cost_audit.py"]
     E2E["tests/e2e/test_smoke.py\nStreamlit boot smoke (Playwright)"]
   end
   GATE --> UNIT
   GATE --> E2E
   UNIT --> RUN
   UNIT --> AUDIT
+  UNIT --> COSTAUDIT
   E2E --> APP

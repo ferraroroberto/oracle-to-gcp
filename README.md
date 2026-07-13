@@ -196,6 +196,29 @@ Expected outputs are CSV and JSON files under `data/output/schema_audit/` unless
 
 This does not replace the mock pipeline preflight yet. The existing `src.preflight` path still blocks mock translation runs and persists compatibility rows into the SQLite table registry. The standalone audit is for proving the production metadata approach before wiring it into the main pipeline.
 
+## Standalone Query Cost Audit
+
+A second experimental, config-driven module runs *after* a run's translated statements have already validated — it is a post-migration optimization layer, not part of the translate-and-validate loop. It reads a run report's `units[].bq_sql` (`src/sql_models.py`), estimates the BigQuery execution cost of each statement, ranks the most expensive ones, writes a markdown report, and appends an LLM-generated optimization-suggestions section (partitioning, clustering, rewrite ideas) using the same local hub client as translation (`src/llm_client.py`).
+
+The default config template lives at:
+
+```text
+unit_test/query_cost_audit_config.json
+```
+
+Run it against a completed run's report with:
+
+```powershell
+& .\.venv\Scripts\python.exe -m unit_test.query_cost_audit --config unit_test\query_cost_audit_config.json
+```
+
+Two estimator modes are supported in `estimator.mode`:
+
+- `bigquery` — a real dry-run query job (`total_bytes_processed`, no data scanned or returned) against Google Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`, converted to USD via `pricing.price_per_tib_usd` (on-demand pricing; default `6.25`).
+- `mock` — a deterministic byte estimate proportional to SQL text length, for local experimentation without live BigQuery credentials. This has no relation to actual scan volume.
+
+Set `llm.enabled` to `false` to skip the optimization-suggestions pass (e.g. when the local hub isn't running). The report is written to `data/output/query_cost_audit/cost_report.md` unless overridden in `output.report_md`.
+
 ## Shared Fleet-Wide GCP IO Helpers
 
 `src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume, per the consolidation tracked in issue #17. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
@@ -232,9 +255,12 @@ src/
 unit_test/
   schema_compatibility_audit.py   Standalone Oracle/BQ schema audit experiment
   schema_audit_config.json        Config template for the schema audit
+  query_cost_audit.py             Standalone post-migration query cost audit
+  query_cost_audit_config.json    Config template for the query cost audit
 tests/
   test_oracle_to_bigquery.py     Mock pipeline tests
   test_schema_compatibility_audit.py Standalone schema audit tests
+  test_query_cost_audit.py       Standalone query cost audit tests
   test_gcs_io.py                 Shared GCS IO helper tests
   test_bigquery_io.py            Shared BigQuery IO helper tests
   e2e/test_smoke.py              Streamlit boot smoke test
