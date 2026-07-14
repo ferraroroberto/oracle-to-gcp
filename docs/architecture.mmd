@@ -74,6 +74,7 @@ flowchart TB
   subgraph standalone["unit_test/ — standalone production-shaped experiments (not wired into RUN)"]
     AUDIT["schema_compatibility_audit.py\nCSV/JSON/Excel table pairs -> column diff"]
     COSTAUDIT["query_cost_audit.py\npost-validation run_report.units -> ranked cost + LLM suggestions"]
+    OPTLOOP["query_optimization_loop.py\nbounded LLM rewrite loop, gated each\niteration by validation.compare_fingerprints"]
   end
   AUDIT -->|optional, real creds| ORACLEDB[("Oracle DB\nORACLE_USERNAME/PASSWORD/DSN")]
   AUDIT -->|optional, real creds| BQPROD[("BigQuery\nGOOGLE_APPLICATION_CREDENTIALS")]
@@ -82,6 +83,12 @@ flowchart TB
   COSTAUDIT -->|optional, dry-run| BQPROD
   COSTAUDIT --> LLMCLIENT
   COSTAUDIT --> COSTOUT["data/output/query_cost_audit/\ncost_report.md"]
+  ARTIFACTS -->|run_report_*.json| OPTLOOP
+  OPTLOOP -->|reuses estimator + BYTES_PER_TIB| COSTAUDIT
+  OPTLOOP -->|reuses correctness gate| VALIDATE
+  OPTLOOP -->|optional, real execution| BQPROD
+  OPTLOOP --> LLMCLIENT
+  OPTLOOP --> OPTOUT["data/output/query_cost_audit/\noptimization_report.md"]
 
   subgraph shared["src/ — shared real GCP IO helpers (canonical for the fleet, issue #17)"]
     GCSIO["gcs_io.py\nupload/download helpers — ADC storage.Client()"]
@@ -92,7 +99,7 @@ flowchart TB
 
   subgraph testing["tests/ + scripts/"]
     GATE["scripts/verify-before-ship.ps1\ncompileall + ruff + pytest (incl. e2e)"]
-    UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py\ntests/test_query_cost_audit.py"]
+    UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py\ntests/test_query_cost_audit.py\ntests/test_query_optimization_loop.py"]
     E2E["tests/e2e/test_smoke.py\nStreamlit boot smoke (Playwright)"]
   end
   GATE --> UNIT
@@ -100,4 +107,5 @@ flowchart TB
   UNIT --> RUN
   UNIT --> AUDIT
   UNIT --> COSTAUDIT
+  UNIT --> OPTLOOP
   E2E --> APP

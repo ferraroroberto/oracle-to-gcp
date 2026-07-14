@@ -219,6 +219,37 @@ Two estimator modes are supported in `estimator.mode`:
 
 Set `llm.enabled` to `false` to skip the optimization-suggestions pass (e.g. when the local hub isn't running). The report is written to `data/output/query_cost_audit/cost_report.md` unless overridden in `output.report_md`.
 
+## Standalone Query Optimization Loop
+
+A third experimental module closes the loop the query cost audit deliberately leaves open: instead of a one-shot suggestions report, it iterates. For each query it asks the local hub for a cost-optimized rewrite, executes the candidate, and validates that it still produces the *same result* as the current accepted query using the same fingerprint comparison the mock pipeline uses (`src/validation.py::compare_fingerprints` — row count, per-column numeric sums, grouped count/sum). A candidate is only adopted if it validates **and** is strictly cheaper than the current baseline; a failed validation rolls back to the last accepted query and stops the loop immediately, never silently replacing the baseline.
+
+The loop stops on any of three conditions:
+
+- **Validation failure** — a candidate's result set diverges from the current baseline. The candidate is rejected and the loop stops.
+- **Diminishing returns** — marginal cost improvement stays below `optimization.min_improvement_pct` for `optimization.diminishing_returns_streak` consecutive iterations.
+- **Max iterations** — `optimization.max_iterations` is reached.
+
+The full per-iteration history (candidate SQL, estimated cost, accept/reject decision, validation outcome) is kept, not just the final query — it is written to the markdown report alongside the baseline-vs-final cost improvement.
+
+The default config template lives at:
+
+```text
+unit_test/query_optimization_loop_config.json
+```
+
+Run it against a completed run's report with:
+
+```powershell
+& .\.venv\Scripts\python.exe -m unit_test.query_optimization_loop --config unit_test\query_optimization_loop_config.json
+```
+
+It reuses the query cost audit's `estimator.mode` (`mock` / `bigquery`) and adds an `executor.mode`, the source of each candidate's materialized result rows for the correctness gate:
+
+- `bigquery` — issues the real query against Google Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
+- `sqlite` — runs SQL directly against a local SQLite database at `executor.db_path`, for local experimentation and tests without live BigQuery credentials.
+
+Set `llm.enabled` to `false` to leave every query at its baseline (zero iterations attempted). The report is written to `data/output/query_cost_audit/optimization_report.md` unless overridden in `output.report_md`.
+
 ## Shared Fleet-Wide GCP IO Helpers
 
 `src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume, per the consolidation tracked in issue #17. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
@@ -257,10 +288,13 @@ unit_test/
   schema_audit_config.json        Config template for the schema audit
   query_cost_audit.py             Standalone post-migration query cost audit
   query_cost_audit_config.json    Config template for the query cost audit
+  query_optimization_loop.py      Standalone bounded LLM cost-optimization loop
+  query_optimization_loop_config.json Config template for the optimization loop
 tests/
   test_oracle_to_bigquery.py     Mock pipeline tests
   test_schema_compatibility_audit.py Standalone schema audit tests
   test_query_cost_audit.py       Standalone query cost audit tests
+  test_query_optimization_loop.py Standalone query optimization loop tests
   test_gcs_io.py                 Shared GCS IO helper tests
   test_bigquery_io.py            Shared BigQuery IO helper tests
   e2e/test_smoke.py              Streamlit boot smoke test

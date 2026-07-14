@@ -1,0 +1,36 @@
+{
+  "input": {
+    "path": "data/output/mock_run/run_report_latest.json",
+    "format": "run_report"
+  },
+  "estimator": {
+    "mode": "mock",
+    "project_id": "mock-gcp-project",
+    "bytes_per_char": 1024
+  },
+  "executor": {
+    "mode": "sqlite",
+    "project_id": "mock-gcp-project",
+    "db_path": "data/output/mock_run/bigquery_mock.db"
+  },
+  "pricing": {
+    "price_per_tib_usd": 6.25
+  },
+  "optimization": {
+    "max_iterations": 5,
+    "min_improvement_pct": 2.0,
+    "diminishing_returns_streak": 2
+  },
+  "llm": {
+    "enabled": true,
+    "base_url": "http://127.0.0.1:8000",
+    "model": "claude-haiku-4-5",
+    "timeout_seconds": 8
+  },
+  "output": {
+    "report_md": "data/output/query_cost_audit/optimization_report.md"
+  },
+  "logging": {
+    "level": "INFO"
+  }
+}
