@@ -20,7 +20,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS
 from src.llm_client import LocalHubClient
+from unit_test._common import configure_logging as _configure_logging
+from unit_test._common import load_json as _load_json
 
 log = logging.getLogger("query_cost_audit")
 
@@ -295,19 +298,10 @@ def _preview(sql: str, limit: int = 80) -> str:
 
 def _build_llm_client(config: dict[str, Any]) -> LocalHubClient:
     return LocalHubClient(
-        base_url=str(config.get("base_url", "http://127.0.0.1:8000")),
-        model=str(config.get("model", "claude-haiku-4-5")),
-        timeout=float(config.get("timeout_seconds", 8)),
+        base_url=str(config.get("base_url", LLM_BASE_URL)),
+        model=str(config.get("model", LLM_MODEL)),
+        timeout=float(config.get("timeout_seconds", LLM_TIMEOUT_SECONDS)),
     )
-
-
-def _load_json(path: str | Path) -> dict[str, Any]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
-def _configure_logging(config: dict[str, Any]) -> None:
-    level_name = str(config.get("level", "INFO")).upper()
-    logging.basicConfig(level=getattr(logging, level_name, logging.INFO), format="%(asctime)s %(levelname)s %(message)s")
 
 
 def main(argv: list[str] | None = None) -> int:

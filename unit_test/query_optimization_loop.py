@@ -16,7 +16,6 @@ after a migration has already validated — never from
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sqlite3
 from dataclasses import dataclass
@@ -25,6 +24,8 @@ from typing import Any, Protocol
 
 from src.llm_client import LocalHubClient, _strip_sql_fence
 from src.validation import compare_fingerprints
+from unit_test._common import configure_logging as _configure_logging
+from unit_test._common import load_json as _load_json
 from unit_test.query_cost_audit import (
     BYTES_PER_TIB,
     CostEstimator,
@@ -420,15 +421,6 @@ def _safe_estimate(estimator: CostEstimator, sql: str) -> tuple[int, str]:
 
 def _cost_usd(bytes_processed: int, price_per_tib: float) -> float:
     return (bytes_processed / BYTES_PER_TIB) * price_per_tib
-
-
-def _load_json(path: str | Path) -> dict[str, Any]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
-def _configure_logging(config: dict[str, Any]) -> None:
-    level_name = str(config.get("level", "INFO")).upper()
-    logging.basicConfig(level=getattr(logging, level_name, logging.INFO), format="%(asctime)s %(levelname)s %(message)s")
 
 
 def main(argv: list[str] | None = None) -> int:
