@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.sql_processing import type_family
+from unit_test._common import configure_logging as _configure_logging
+from unit_test._common import load_json as _load_json
 
 log = logging.getLogger("schema_compatibility_audit")
 
@@ -663,10 +665,6 @@ def _column_key(name: str, case_sensitive: bool) -> str:
     return name if case_sensitive else name.lower()
 
 
-def _load_json(path: str | Path) -> dict[str, Any]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0].keys()) if rows else []
@@ -680,11 +678,6 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 def _write_json(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
-
-
-def _configure_logging(config: dict[str, Any]) -> None:
-    level_name = str(config.get("level", "INFO")).upper()
-    logging.basicConfig(level=getattr(logging, level_name, logging.INFO), format="%(asctime)s %(levelname)s %(message)s")
 
 
 def _env_value(config: dict[str, Any], key: str) -> str:
