@@ -9,7 +9,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS
+from src.config import LLM_BASE_URL, LLM_MAX_TOKENS, LLM_MODEL, LLM_TIMEOUT_SECONDS
 from src.pipeline_config import LLMConfig
 from src.secrets import get_env_secret
 
@@ -28,7 +28,12 @@ class LLMResponse:
 
 
 class LocalHubClient:
-    """Small OpenAI-shape client for the local hub at 127.0.0.1:8000."""
+    """Small client for the local hub at 127.0.0.1:8000.
+
+    Supports both the OpenAI-shape ``/v1/chat/completions`` endpoint
+    (``request_format="openai_chat"``, the default) and the Anthropic-shape
+    ``/v1/messages`` endpoint (``request_format="anthropic_messages"``).
+    """
 
     def __init__(
         self,
@@ -42,6 +47,8 @@ class LocalHubClient:
         auth_mode: str = "bearer",
         api_key_env_var: str = "LLM_API_KEY",
         authorization_header_env_var: str = "",
+        request_format: str = "openai_chat",
+        max_tokens: int = LLM_MAX_TOKENS,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -55,6 +62,8 @@ class LocalHubClient:
         self.auth_mode = auth_mode
         self.api_key_env_var = api_key_env_var
         self.authorization_header_env_var = authorization_header_env_var
+        self.request_format = request_format
+        self.max_tokens = max_tokens
 
     @classmethod
     def from_config(cls, config: LLMConfig) -> LocalHubClient:
@@ -70,6 +79,7 @@ class LocalHubClient:
             auth_mode=config.auth_mode,
             api_key_env_var=config.api_key_env_var,
             authorization_header_env_var=config.authorization_header_env_var,
+            request_format=config.request_format,
         )
 
     def translate(self, oracle_sql: str, mapping: dict[str, str]) -> LLMResponse:
@@ -86,16 +96,30 @@ class LocalHubClient:
         return self._call(system_message, user_message, strip_sql_fence=False)
 
     def _call(self, system_message: str, user_message: str, *, strip_sql_fence: bool) -> LLMResponse:
-        endpoint = f"{self.base_url}/v1/chat/completions"
-        payload = {
-            "model": self.model,
-            "temperature": self.temperature,
-            "messages": [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message},
-            ],
-            **self.extra_parameters,
-        }
+        if self.request_format == "anthropic_messages":
+            endpoint = f"{self.base_url}/v1/messages"
+            payload = {
+                "model": self.model,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
+                "system": system_message,
+                "messages": [{"role": "user", "content": user_message}],
+                **self.extra_parameters,
+            }
+            extract_text = _extract_anthropic_messages_text
+        else:
+            endpoint = f"{self.base_url}/v1/chat/completions"
+            payload = {
+                "model": self.model,
+                "temperature": self.temperature,
+                "messages": [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_message},
+                ],
+                **self.extra_parameters,
+            }
+            extract_text = _extract_openai_chat_text
+
         request = urllib.request.Request(
             endpoint,
             data=json.dumps(payload).encode("utf-8"),
@@ -117,7 +141,7 @@ class LocalHubClient:
             )
 
         try:
-            text = str(body["choices"][0]["message"]["content"]).strip()
+            text = extract_text(body)
         except (KeyError, IndexError, TypeError) as exc:
             return LLMResponse(
                 text="",
@@ -147,6 +171,14 @@ class LocalHubClient:
             if value:
                 return f"Bearer {value}"
         return "Bearer local-dummy"
+
+
+def _extract_openai_chat_text(body: dict[str, Any]) -> str:
+    return str(body["choices"][0]["message"]["content"]).strip()
+
+
+def _extract_anthropic_messages_text(body: dict[str, Any]) -> str:
+    return str(body["content"][0]["text"]).strip()
 
 
 def _strip_sql_fence(text: str) -> str:

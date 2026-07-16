@@ -97,6 +97,8 @@ By default the app attempts an OpenAI-shape request to:
 http://127.0.0.1:8000/v1/chat/completions
 ```
 
+The **Connection Configuration** tab's "Request format" selector switches this to the Anthropic-shape `/v1/messages` endpoint instead (`request_format: "anthropic_messages"` in `config/pipeline.json`) — useful when pointing `LLM_BASE_URL` at a hub or provider that only speaks the Anthropic Messages API.
+
 Default model:
 
 ```text
@@ -109,6 +111,7 @@ Override with environment variables:
 $env:LLM_BASE_URL = "http://127.0.0.1:8000"
 $env:LLM_MODEL = "claude-haiku-4-5"
 $env:LLM_TIMEOUT_SECONDS = "8"
+$env:LLM_MAX_TOKENS = "4096"  # only used by the anthropic_messages request format
 ```
 
 If the hub is unavailable or returns a candidate that fails deterministic guardrails, the demo falls back to the local translator. This is intentional for the mock: the product shape is the deterministic pipeline, not reliance on an opaque runtime agent.
