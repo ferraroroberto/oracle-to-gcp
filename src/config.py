@@ -23,3 +23,4 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8000")
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5")
 LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "8"))
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "4096"))

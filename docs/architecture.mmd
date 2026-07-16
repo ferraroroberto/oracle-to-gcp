@@ -55,11 +55,11 @@ flowchart TB
   PREFLIGHT --> TABLEREG
   TABLEREG --> REGDB[("data/table_registry.db")]
 
-  LLMCLIENT["llm_client.py\nLocalHubClient — OpenAI-shape client"]
+  LLMCLIENT["llm_client.py\nLocalHubClient — openai_chat or anthropic_messages, by request_format"]
   SECRETS["secrets.py\nenv secret lookup + redaction"]
   TRANSLATE --> LLMCLIENT
   LLMCLIENT --> SECRETS
-  LLMCLIENT -->|"POST /v1/chat/completions"| HUB[("Local LLM hub\n127.0.0.1:8000 — claude-haiku-4-5 default")]
+  LLMCLIENT -->|"POST /v1/chat/completions or /v1/messages"| HUB[("Local LLM hub\n127.0.0.1:8000 — claude-haiku-4-5 default")]
 
   CONFIGPY["config.py\nROOT_DIR/DATA_DIR paths + env defaults"]
   MOCKENV --> CONFIGPY
