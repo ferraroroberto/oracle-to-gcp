@@ -32,6 +32,7 @@ _MARKER = Path(__file__).resolve().parent / "_streamlit_restart_marker.txt"
 STREAMLIT_E2E_PORT = 8786
 
 _HEALTH_TIMEOUT = 30.0
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 def port_is_in_use(port: int) -> bool:
@@ -47,6 +48,7 @@ def _listening_pids(port: int) -> list[str]:
         out = subprocess.run(
             ["netstat", "-ano", "-p", "TCP"],
             capture_output=True, text=True, check=False,
+            creationflags=_NO_WINDOW,
         ).stdout
         pids = set()
         for line in out.splitlines():
@@ -73,6 +75,7 @@ def kill_streamlit_on_port(port: int) -> None:
                 subprocess.run(
                     ["taskkill", "/F", "/PID", pid],
                     capture_output=True, check=False,
+                    creationflags=_NO_WINDOW,
                 )
             else:
                 subprocess.run(["kill", "-9", pid], capture_output=True, check=False)
@@ -127,6 +130,7 @@ def ensure_fresh_streamlit(port: int = STREAMLIT_E2E_PORT) -> str:
             "--browser.gatherUsageStats", "false",
         ],
         cwd=str(_ROOT),
+        creationflags=_NO_WINDOW,
     )
     base_url = f"http://localhost:{port}"
     if not _wait_until(lambda: _health_ok(base_url), timeout=_HEALTH_TIMEOUT):
