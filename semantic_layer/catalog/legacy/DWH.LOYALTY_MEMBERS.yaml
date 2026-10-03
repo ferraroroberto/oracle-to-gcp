@@ -1,0 +1,12 @@
+table: DWH.LOYALTY_MEMBERS
+platform: legacy
+columns:
+- name: CUSTOMER_ID
+  type: INTEGER
+  nullable: true
+- name: ENROLLED_DATE
+  type: DATE
+  nullable: true
+- name: TIER
+  type: VARCHAR
+  nullable: true

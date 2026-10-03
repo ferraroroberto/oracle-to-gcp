@@ -1,0 +1,18 @@
+table: DWH.STORES
+platform: legacy
+columns:
+- name: STORE_ID
+  type: INTEGER
+  nullable: true
+- name: STORE_NAME
+  type: VARCHAR
+  nullable: true
+- name: DISTRICT
+  type: VARCHAR
+  nullable: true
+- name: REGION
+  type: VARCHAR
+  nullable: true
+- name: OPENED_DATE
+  type: DATE
+  nullable: true

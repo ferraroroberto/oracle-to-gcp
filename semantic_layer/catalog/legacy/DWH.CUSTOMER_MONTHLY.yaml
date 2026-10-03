@@ -1,0 +1,27 @@
+table: DWH.CUSTOMER_MONTHLY
+platform: legacy
+columns:
+- name: SNAPSHOT_DATE
+  type: DATE
+  nullable: true
+- name: CUSTOMER_ID
+  type: INTEGER
+  nullable: true
+- name: HOME_STORE_ID
+  type: INTEGER
+  nullable: true
+- name: FIRST_PURCHASE_STORE_ID
+  type: INTEGER
+  nullable: true
+- name: LAST_PURCHASE_DATE
+  type: DATE
+  nullable: true
+- name: ACCOUNT_STATUS
+  type: VARCHAR
+  nullable: true
+- name: IS_STAFF
+  type: INTEGER
+  nullable: true
+- name: ORDERS_12M
+  type: INTEGER
+  nullable: true

@@ -1,0 +1,24 @@
+table: analytics.customers
+platform: cloud
+columns:
+- name: customer_id
+  type: INTEGER
+  nullable: true
+- name: signup_date
+  type: DATE
+  nullable: true
+- name: first_purchase_date
+  type: DATE
+  nullable: true
+- name: first_purchase_store_id
+  type: INTEGER
+  nullable: true
+- name: home_store_id
+  type: INTEGER
+  nullable: true
+- name: account_status
+  type: VARCHAR
+  nullable: true
+- name: is_staff
+  type: BOOLEAN
+  nullable: true

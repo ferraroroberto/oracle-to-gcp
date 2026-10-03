@@ -1,0 +1,12 @@
+table: analytics.loyalty_members
+platform: cloud
+columns:
+- name: customer_id
+  type: INTEGER
+  nullable: true
+- name: enrolled_date
+  type: DATE
+  nullable: true
+- name: tier
+  type: VARCHAR
+  nullable: true
