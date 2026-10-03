@@ -1,0 +1,1465 @@
+{
+  "definitions": {
+    "anchor.monthly_pack.active_customers": {
+      "data": {
+        "id": "anchor.monthly_pack.active_customers",
+        "kind": "anchor",
+        "last_reviewed": "2026-10-03",
+        "measures": {
+          "entity": "customer.active_buyer",
+          "metric": "metric.customer_count"
+        },
+        "name": "Active customers — monthly management pack headline",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "published_in": "Monthly management pack, \"customer base\" page (headline figure)",
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "tolerance_pct": 0.5,
+        "values": [
+          {
+            "period": "2026-08",
+            "value": 446
+          },
+          {
+            "period": "2026-09",
+            "value": 449
+          }
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "anchor",
+      "path": "domains/core_analytics/anchors/anchor.monthly_pack.active_customers.yaml",
+      "summary": "Active customers — monthly management pack headline",
+      "used_by": [
+        "tpl.active_customers_by_store_and_join_month"
+      ],
+      "uses": [
+        "customer.active_buyer",
+        "metric.customer_count"
+      ]
+    },
+    "customer.active_buyer": {
+      "data": {
+        "ai_context": {
+          "examples": [
+            "how many customers do we have",
+            "active customers by store"
+          ],
+          "instructions": "If the user says \"customer\" with no qualifier, ask whether they mean active customers (12-month buyers), any registered account, or marketing's campaign-reachable customers, showing each one's difference in one line.\n"
+        },
+        "anchors": [
+          "anchor.monthly_pack.active_customers"
+        ],
+        "bindings": [
+          {
+            "filter": "{t}.ACCOUNT_STATUS = 'A' AND {t}.IS_STAFF = 0 AND {t}.LAST_PURCHASE_DATE >= ADD_MONTHS({t}.SNAPSHOT_DATE, -12)",
+            "key": "CUSTOMER_ID",
+            "platform": "legacy",
+            "preferred": false,
+            "source": "DWH.CUSTOMER_MONTHLY",
+            "status": "legacy",
+            "time_column": "SNAPSHOT_DATE"
+          },
+          {
+            "filter": "{t}.account_status = 'A' AND {t}.is_staff = FALSE AND {t}.last_purchase_date >= DATE_SUB({t}.snapshot_date, INTERVAL 12 MONTH)",
+            "key": "customer_id",
+            "platform": "cloud",
+            "preferred": true,
+            "review_note": "reviewed 2026-10-03 by avery.lane: auto-transpile kept ADD_MONTHS (not a BigQuery function) and compared the BOOLEAN is_staff to 0 — fixed by hand",
+            "source": "analytics.customer_monthly",
+            "status": "active",
+            "time_column": "snapshot_date"
+          }
+        ],
+        "caveats": [
+          "Snapshot table: always pin one snapshot_date; summing across months counts each customer up to 12 times.",
+          "The 12-month window is the leadership-approved definition, shared with finance."
+        ],
+        "checks": [
+          {
+            "column": "CUSTOMER_ID",
+            "must_be": 0,
+            "type": "nullValues"
+          },
+          {
+            "columns": [
+              "CUSTOMER_ID",
+              "SNAPSHOT_DATE"
+            ],
+            "must_be": 0,
+            "type": "duplicateValues"
+          },
+          {
+            "between": [
+              600,
+              1000
+            ],
+            "per": "SNAPSHOT_DATE",
+            "type": "rowCount"
+          },
+          {
+            "column": "ACCOUNT_STATUS",
+            "type": "invalidValues",
+            "valid_values": [
+              "A",
+              "C",
+              "P"
+            ]
+          },
+          {
+            "column": "SNAPSHOT_DATE",
+            "max_lag_days": 35,
+            "type": "freshness"
+          },
+          {
+            "measure": "COUNT(DISTINCT {entity.key})",
+            "platforms": [
+              "legacy",
+              "cloud"
+            ],
+            "tolerance_pct": 0.1,
+            "type": "reconcile"
+          }
+        ],
+        "description": "Open account (status A) that is not a staff account and completed at least one purchase in the 12 months up to the snapshot date. Pending accounts (P) cannot buy yet and closed accounts (C) are excluded.\n",
+        "grain": "one row per customer per month-end snapshot",
+        "id": "customer.active_buyer",
+        "kind": "entity",
+        "last_reviewed": "2026-10-03",
+        "name": "Active customer (bought in the last 12 months)",
+        "not_to_be_confused_with": [
+          {
+            "difference": "every open or pending registered account, whether or not it ever bought",
+            "id": "customer.any_account"
+          },
+          {
+            "difference": "marketing's 6-month window, with no account-status or staff filter",
+            "id": "customer.campaign_reachable"
+          }
+        ],
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "customer",
+          "client",
+          "active customer",
+          "active client",
+          "buyer"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "entity",
+      "path": "domains/core_analytics/entities/customer.active_buyer.yaml",
+      "summary": "Open account (status A) that is not a staff account and completed at least one purchase in the 12 months up to the snapshot date",
+      "used_by": [
+        "anchor.monthly_pack.active_customers",
+        "metric.customer_count",
+        "rel.active_buyer__first_purchase_store",
+        "rel.active_buyer__home_store",
+        "rel.active_buyer__join_month",
+        "rel.active_buyer__signup_month",
+        "tpl.active_customers_by_store_and_join_month"
+      ],
+      "uses": []
+    },
+    "customer.any_account": {
+      "data": {
+        "bindings": [
+          {
+            "filter": "{t}.account_status IN ('A', 'P')",
+            "key": "customer_id",
+            "platform": "cloud",
+            "preferred": true,
+            "source": "analytics.customers",
+            "status": "active"
+          },
+          {
+            "filter": "{t}.ACCOUNT_STATUS IN ('A', 'P')",
+            "key": "CUSTOMER_ID",
+            "platform": "legacy",
+            "preferred": false,
+            "source": "DWH.CUSTOMERS",
+            "status": "legacy"
+          }
+        ],
+        "caveats": [
+          "Includes staff accounts; filter them out if the question is about real customers."
+        ],
+        "checks": [
+          {
+            "column": "CUSTOMER_ID",
+            "must_be": 0,
+            "type": "nullValues"
+          },
+          {
+            "columns": [
+              "CUSTOMER_ID"
+            ],
+            "must_be": 0,
+            "type": "duplicateValues"
+          },
+          {
+            "column": "ACCOUNT_STATUS",
+            "type": "invalidValues",
+            "valid_values": [
+              "A",
+              "C",
+              "P"
+            ]
+          },
+          {
+            "measure": "COUNT(DISTINCT {entity.key})",
+            "platforms": [
+              "legacy",
+              "cloud"
+            ],
+            "tolerance_pct": 0.1,
+            "type": "reconcile"
+          }
+        ],
+        "description": "Every registered account that is open (A) or pending verification (P), whether or not it has ever bought. The onboarding team's population; current state, not a monthly snapshot.",
+        "grain": "one row per customer account (current state)",
+        "id": "customer.any_account",
+        "kind": "entity",
+        "last_reviewed": "2026-10-03",
+        "name": "Registered account (open or pending)",
+        "not_to_be_confused_with": [
+          {
+            "difference": "only open, non-staff accounts that bought in the last 12 months (management pack)",
+            "id": "customer.active_buyer"
+          },
+          {
+            "difference": "marketing's 6-month buyers from the monthly snapshot",
+            "id": "customer.campaign_reachable"
+          }
+        ],
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "customer",
+          "client",
+          "account",
+          "registered account",
+          "registered customer"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "entity",
+      "path": "domains/core_analytics/entities/customer.any_account.yaml",
+      "summary": "Every registered account that is open (A) or pending verification (P), whether or not it has ever bought",
+      "used_by": [
+        "metric.customer_count",
+        "rel.any_account__home_store",
+        "rel.any_account__join_month",
+        "rel.any_account__signup_month"
+      ],
+      "uses": []
+    },
+    "customer.campaign_reachable": {
+      "data": {
+        "bindings": [
+          {
+            "filter": "{t}.last_purchase_date >= DATE_SUB({t}.snapshot_date, INTERVAL '6' MONTH)",
+            "key": "customer_id",
+            "platform": "cloud",
+            "preferred": true,
+            "source": "analytics.customer_monthly",
+            "status": "active",
+            "time_column": "snapshot_date"
+          },
+          {
+            "filter": "{t}.LAST_PURCHASE_DATE >= ADD_MONTHS({t}.SNAPSHOT_DATE, -6)",
+            "key": "CUSTOMER_ID",
+            "platform": "legacy",
+            "preferred": false,
+            "review_note": "reviewed 2026-10-10 by sam.ortiz: auto-transpile produced DATE_SUB(x, '6', MONTH), which is not Oracle — fixed to ADD_MONTHS by hand",
+            "source": "DWH.CUSTOMER_MONTHLY",
+            "status": "legacy",
+            "time_column": "SNAPSHOT_DATE"
+          }
+        ],
+        "caveats": [
+          "Includes closed and staff accounts — likely over-counts the reachable audience (open question)."
+        ],
+        "checks": [
+          {
+            "column": "customer_id",
+            "must_be": 0,
+            "type": "nullValues"
+          },
+          {
+            "columns": [
+              "customer_id",
+              "snapshot_date"
+            ],
+            "must_be": 0,
+            "type": "duplicateValues"
+          },
+          {
+            "column": "snapshot_date",
+            "max_lag_days": 35,
+            "type": "freshness"
+          },
+          {
+            "measure": "COUNT(DISTINCT {entity.key})",
+            "platforms": [
+              "legacy",
+              "cloud"
+            ],
+            "tolerance_pct": 0.1,
+            "type": "reconcile"
+          }
+        ],
+        "description": "Customer with a completed purchase in the 6 months up to the snapshot date. Marketing's campaign rule. No account-status or staff filter (see open questions).\n",
+        "grain": "one row per customer per month-end snapshot",
+        "id": "customer.campaign_reachable",
+        "kind": "entity",
+        "last_reviewed": "2026-10-10",
+        "name": "Campaign-reachable customer (bought in the last 6 months)",
+        "not_to_be_confused_with": [
+          {
+            "difference": "management-pack definition — 12 months, open accounts only, staff excluded",
+            "id": "customer.active_buyer"
+          },
+          {
+            "difference": "every open or pending account, whether or not it ever bought",
+            "id": "customer.any_account"
+          }
+        ],
+        "owner": {
+          "steward": "sam.ortiz",
+          "team": "marketing"
+        },
+        "provenance": {
+          "confirmed_by": "sam.ortiz",
+          "confirmed_on": "2026-10-10",
+          "from": "queries/marketing_pilot.bigquery.sql",
+          "lines": [
+            3,
+            11
+          ],
+          "method": "harvest",
+          "open_questions": [
+            "Should closed accounts (status C) be excluded? They cannot receive campaigns — CRM team to confirm.",
+            "Should staff accounts be excluded, as in customer.active_buyer?"
+          ],
+          "session": "2026-10-10-marketing"
+        },
+        "review_by": "2026-11-10",
+        "status": "reviewed",
+        "synonyms": [
+          "customer",
+          "client",
+          "reachable customer",
+          "campaign audience",
+          "recent buyer"
+        ],
+        "version": 1
+      },
+      "domain": "marketing",
+      "kind": "entity",
+      "path": "domains/marketing/entities/customer.campaign_reachable.yaml",
+      "summary": "Customer with a completed purchase in the 6 months up to the snapshot date",
+      "used_by": [
+        "metric.customer_count",
+        "rel.campaign_reachable__home_store",
+        "tpl.reachable_customers_by_region"
+      ],
+      "uses": []
+    },
+    "customer.loyalty_member": {
+      "data": {
+        "bindings": [
+          {
+            "key": "customer_id",
+            "platform": "cloud",
+            "preferred": true,
+            "source": "analytics.loyalty_members",
+            "status": "active"
+          },
+          {
+            "key": "CUSTOMER_ID",
+            "platform": "legacy",
+            "source": "DWH.LOYALTY_MEMBERS",
+            "status": "legacy"
+          }
+        ],
+        "checks": [
+          {
+            "column": "customer_id",
+            "must_be": 0,
+            "type": "nullValues"
+          },
+          {
+            "columns": [
+              "customer_id"
+            ],
+            "must_be": 0,
+            "type": "duplicateValues"
+          },
+          {
+            "column": "tier",
+            "type": "invalidValues",
+            "valid_values": [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ]
+          }
+        ],
+        "description": "Customer enrolled in the loyalty programme, at any tier, regardless of recent purchases.",
+        "grain": "one row per enrolled customer (current state)",
+        "id": "customer.loyalty_member",
+        "kind": "entity",
+        "last_reviewed": "2026-10-10",
+        "name": "Loyalty programme member",
+        "not_to_be_confused_with": [
+          {
+            "difference": "12-month buyers with open accounts; membership is not required",
+            "id": "customer.active_buyer"
+          },
+          {
+            "difference": "6-month buyers; membership is not required",
+            "id": "customer.campaign_reachable"
+          },
+          {
+            "difference": "every open or pending account, enrolled or not",
+            "id": "customer.any_account"
+          }
+        ],
+        "owner": {
+          "steward": "sam.ortiz",
+          "team": "marketing"
+        },
+        "provenance": {
+          "confirmed_by": "sam.ortiz",
+          "confirmed_on": "2026-10-10",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-10",
+        "status": "certified",
+        "synonyms": [
+          "customer",
+          "loyalty member",
+          "member",
+          "programme member"
+        ],
+        "version": 1
+      },
+      "domain": "marketing",
+      "kind": "entity",
+      "path": "domains/marketing/entities/customer.loyalty_member.yaml",
+      "summary": "Customer enrolled in the loyalty programme, at any tier, regardless of recent purchases",
+      "used_by": [
+        "metric.customer_count"
+      ],
+      "uses": []
+    },
+    "dimension.first_purchase_store": {
+      "data": {
+        "bindings": [
+          {
+            "key": "store_id",
+            "platform": "cloud",
+            "preferred": true,
+            "source": "analytics.stores",
+            "status": "active"
+          },
+          {
+            "key": "STORE_ID",
+            "platform": "legacy",
+            "source": "DWH.STORES",
+            "status": "legacy"
+          }
+        ],
+        "description": "Store where the customer completed their first purchase. Empty for customers who never bought.",
+        "id": "dimension.first_purchase_store",
+        "kind": "dimension",
+        "last_reviewed": "2026-10-03",
+        "levels": [
+          {
+            "expressions": {
+              "cloud": "{t}.store_name",
+              "legacy": "{t}.STORE_NAME"
+            },
+            "name": "store"
+          },
+          {
+            "expressions": {
+              "cloud": "{t}.district",
+              "legacy": "{t}.DISTRICT"
+            },
+            "name": "district"
+          },
+          {
+            "expressions": {
+              "cloud": "{t}.region",
+              "legacy": "{t}.REGION"
+            },
+            "name": "region"
+          }
+        ],
+        "name": "First-purchase store",
+        "not_to_be_confused_with": [
+          {
+            "difference": "store assigned at signup (always present); the management pack's \"store\"",
+            "id": "dimension.home_store"
+          }
+        ],
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "store",
+          "first store",
+          "first purchase store",
+          "store of first purchase"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "dimension",
+      "path": "domains/core_analytics/dimensions/dimension.first_purchase_store.yaml",
+      "summary": "Store where the customer completed their first purchase",
+      "used_by": [
+        "rel.active_buyer__first_purchase_store"
+      ],
+      "uses": []
+    },
+    "dimension.home_store": {
+      "data": {
+        "bindings": [
+          {
+            "key": "STORE_ID",
+            "platform": "legacy",
+            "preferred": false,
+            "source": "DWH.STORES"
+          },
+          {
+            "key": "store_id",
+            "platform": "cloud",
+            "review_note": "reviewed 2026-10-03 by avery.lane",
+            "source": "analytics.stores",
+            "status": "active"
+          }
+        ],
+        "description": "Store assigned to the customer at signup (always present). Rolls up to district and region.",
+        "id": "dimension.home_store",
+        "kind": "dimension",
+        "last_reviewed": "2026-10-03",
+        "levels": [
+          {
+            "expressions": {
+              "cloud": "{t}.store_name",
+              "legacy": "{t}.STORE_NAME"
+            },
+            "name": "store"
+          },
+          {
+            "expressions": {
+              "cloud": "{t}.district",
+              "legacy": "{t}.DISTRICT"
+            },
+            "name": "district"
+          },
+          {
+            "expressions": {
+              "cloud": "{t}.region",
+              "legacy": "{t}.REGION"
+            },
+            "name": "region"
+          }
+        ],
+        "name": "Home store",
+        "not_to_be_confused_with": [
+          {
+            "difference": "store where the customer completed their first purchase",
+            "id": "dimension.first_purchase_store"
+          }
+        ],
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "store",
+          "shop",
+          "location",
+          "home store",
+          "region",
+          "district"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "dimension",
+      "path": "domains/core_analytics/dimensions/dimension.home_store.yaml",
+      "summary": "Store assigned to the customer at signup (always present)",
+      "used_by": [
+        "rel.active_buyer__home_store",
+        "rel.any_account__home_store",
+        "rel.campaign_reachable__home_store",
+        "tpl.active_customers_by_store_and_join_month",
+        "tpl.reachable_customers_by_region"
+      ],
+      "uses": []
+    },
+    "dimension.join_month": {
+      "data": {
+        "bindings": [
+          {
+            "expression": "TRUNC({t}.FIRST_PURCHASE_DATE, 'MONTH')",
+            "key": "CUSTOMER_ID",
+            "platform": "legacy",
+            "preferred": false,
+            "source": "DWH.CUSTOMERS"
+          },
+          {
+            "expression": "DATE_TRUNC({t}.first_purchase_date, MONTH)",
+            "key": "customer_id",
+            "platform": "cloud",
+            "review_note": "reviewed 2026-10-03 by avery.lane",
+            "source": "analytics.customers",
+            "status": "active"
+          }
+        ],
+        "description": "Month of the customer's first completed purchase. \"Joined\" means first purchase, not signup.",
+        "id": "dimension.join_month",
+        "kind": "dimension",
+        "last_reviewed": "2026-10-03",
+        "name": "Join month (first purchase)",
+        "not_to_be_confused_with": [
+          {
+            "difference": "month the account was registered, which may be long before any purchase",
+            "id": "dimension.signup_month"
+          }
+        ],
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "join month",
+          "month joined",
+          "month they joined",
+          "cohort month",
+          "cohort"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "dimension",
+      "path": "domains/core_analytics/dimensions/dimension.join_month.yaml",
+      "summary": "Month of the customer's first completed purchase",
+      "used_by": [
+        "rel.active_buyer__join_month",
+        "rel.any_account__join_month",
+        "tpl.active_customers_by_store_and_join_month"
+      ],
+      "uses": []
+    },
+    "dimension.signup_month": {
+      "data": {
+        "bindings": [
+          {
+            "expression": "DATE_TRUNC({t}.signup_date, MONTH)",
+            "key": "customer_id",
+            "platform": "cloud",
+            "preferred": true,
+            "source": "analytics.customers",
+            "status": "active"
+          },
+          {
+            "expression": "TRUNC({t}.SIGNUP_DATE, 'MONTH')",
+            "key": "CUSTOMER_ID",
+            "platform": "legacy",
+            "source": "DWH.CUSTOMERS",
+            "status": "legacy"
+          }
+        ],
+        "description": "Month the account was registered. Often long before the first purchase.",
+        "id": "dimension.signup_month",
+        "kind": "dimension",
+        "last_reviewed": "2026-10-03",
+        "name": "Signup month",
+        "not_to_be_confused_with": [
+          {
+            "difference": "month of the first completed purchase (\"joined\" in the management pack)",
+            "id": "dimension.join_month"
+          }
+        ],
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "signup month",
+          "registration month",
+          "month joined",
+          "month they joined"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "dimension",
+      "path": "domains/core_analytics/dimensions/dimension.signup_month.yaml",
+      "summary": "Month the account was registered",
+      "used_by": [
+        "rel.active_buyer__signup_month",
+        "rel.any_account__signup_month"
+      ],
+      "uses": []
+    },
+    "metric.customer_count": {
+      "data": {
+        "additivity": "non_additive_over_time",
+        "applies_to": [
+          "customer.active_buyer",
+          "customer.any_account",
+          "customer.campaign_reachable",
+          "customer.loyalty_member"
+        ],
+        "description": "Distinct customers in the chosen customer population.",
+        "expression": "COUNT(DISTINCT {entity.key})",
+        "id": "metric.customer_count",
+        "kind": "metric",
+        "last_reviewed": "2026-10-03",
+        "name": "Number of customers",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "synonyms": [
+          "number of customers",
+          "customer count",
+          "how many customers",
+          "headcount"
+        ],
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "metric",
+      "path": "domains/core_analytics/metrics/metric.customer_count.yaml",
+      "summary": "Distinct customers in the chosen customer population",
+      "used_by": [
+        "anchor.monthly_pack.active_customers",
+        "tpl.active_customers_by_store_and_join_month",
+        "tpl.reachable_customers_by_region"
+      ],
+      "uses": [
+        "customer.active_buyer",
+        "customer.any_account",
+        "customer.campaign_reachable",
+        "customer.loyalty_member"
+      ]
+    },
+    "rel.active_buyer__first_purchase_store": {
+      "data": {
+        "cardinality": "many_to_one",
+        "cardinality_evidence": "stores.store_id is unique (harvest probe, 2026-10-03 session)",
+        "caveats": [
+          "Active buyers always have a first purchase, so the inner join drops nobody."
+        ],
+        "from": "customer.active_buyer",
+        "id": "rel.active_buyer__first_purchase_store",
+        "join": {
+          "cloud": "{to}.store_id = {from}.first_purchase_store_id",
+          "legacy": "{to}.STORE_ID = {from}.FIRST_PURCHASE_STORE_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "First-purchase store of each active buyer",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.first_purchase_store",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.active_buyer__first_purchase_store.yaml",
+      "summary": "First-purchase store of each active buyer",
+      "used_by": [],
+      "uses": [
+        "customer.active_buyer",
+        "dimension.first_purchase_store"
+      ]
+    },
+    "rel.active_buyer__home_store": {
+      "data": {
+        "cardinality": "many_to_one",
+        "cardinality_evidence": "harvest probe: key uniqueness on both sides",
+        "from": "customer.active_buyer",
+        "id": "rel.active_buyer__home_store",
+        "join": {
+          "cloud": "{to}.store_id = {from}.home_store_id",
+          "legacy": "{to}.STORE_ID = {from}.HOME_STORE_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "Home store of each active buyer",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.home_store",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.active_buyer__home_store.yaml",
+      "summary": "Home store of each active buyer",
+      "used_by": [],
+      "uses": [
+        "customer.active_buyer",
+        "dimension.home_store"
+      ]
+    },
+    "rel.active_buyer__join_month": {
+      "data": {
+        "cardinality": "many_to_one",
+        "cardinality_evidence": "harvest probe: key uniqueness on both sides",
+        "from": "customer.active_buyer",
+        "id": "rel.active_buyer__join_month",
+        "join": {
+          "cloud": "{to}.customer_id = {from}.customer_id",
+          "legacy": "{to}.CUSTOMER_ID = {from}.CUSTOMER_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "Join month (first purchase) of each active buyer",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.join_month",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.active_buyer__join_month.yaml",
+      "summary": "Join month (first purchase) of each active buyer",
+      "used_by": [],
+      "uses": [
+        "customer.active_buyer",
+        "dimension.join_month"
+      ]
+    },
+    "rel.active_buyer__signup_month": {
+      "data": {
+        "cardinality": "many_to_one",
+        "cardinality_evidence": "customers.customer_id is unique (harvest probe, 2026-10-03 session)",
+        "from": "customer.active_buyer",
+        "id": "rel.active_buyer__signup_month",
+        "join": {
+          "cloud": "{to}.customer_id = {from}.customer_id",
+          "legacy": "{to}.CUSTOMER_ID = {from}.CUSTOMER_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "Signup month of each active buyer",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.signup_month",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.active_buyer__signup_month.yaml",
+      "summary": "Signup month of each active buyer",
+      "used_by": [],
+      "uses": [
+        "customer.active_buyer",
+        "dimension.signup_month"
+      ]
+    },
+    "rel.any_account__home_store": {
+      "data": {
+        "cardinality": "many_to_one",
+        "from": "customer.any_account",
+        "id": "rel.any_account__home_store",
+        "join": {
+          "cloud": "{to}.store_id = {from}.home_store_id",
+          "legacy": "{to}.STORE_ID = {from}.HOME_STORE_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "Home store of each registered account",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.home_store",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.any_account__home_store.yaml",
+      "summary": "Home store of each registered account",
+      "used_by": [],
+      "uses": [
+        "customer.any_account",
+        "dimension.home_store"
+      ]
+    },
+    "rel.any_account__join_month": {
+      "data": {
+        "cardinality": "many_to_one",
+        "from": "customer.any_account",
+        "id": "rel.any_account__join_month",
+        "join": {
+          "cloud": "{to}.customer_id = {from}.customer_id",
+          "legacy": "{to}.CUSTOMER_ID = {from}.CUSTOMER_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "Join month of each registered account",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.join_month",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.any_account__join_month.yaml",
+      "summary": "Join month of each registered account",
+      "used_by": [],
+      "uses": [
+        "customer.any_account",
+        "dimension.join_month"
+      ]
+    },
+    "rel.any_account__signup_month": {
+      "data": {
+        "cardinality": "many_to_one",
+        "from": "customer.any_account",
+        "id": "rel.any_account__signup_month",
+        "join": {
+          "cloud": "{to}.customer_id = {from}.customer_id",
+          "legacy": "{to}.CUSTOMER_ID = {from}.CUSTOMER_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-03",
+        "name": "Signup month of each registered account",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "conversation",
+          "method": "contribute"
+        },
+        "review_by": "2027-04-03",
+        "status": "certified",
+        "to": "dimension.signup_month",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "relationship",
+      "path": "domains/core_analytics/relationships/rel.any_account__signup_month.yaml",
+      "summary": "Signup month of each registered account",
+      "used_by": [],
+      "uses": [
+        "customer.any_account",
+        "dimension.signup_month"
+      ]
+    },
+    "rel.campaign_reachable__home_store": {
+      "data": {
+        "cardinality": "many_to_one",
+        "cardinality_evidence": "harvest probe: key uniqueness on both sides",
+        "from": "customer.campaign_reachable",
+        "id": "rel.campaign_reachable__home_store",
+        "join": {
+          "cloud": "{to}.store_id = {from}.home_store_id",
+          "legacy": "{to}.STORE_ID = {from}.HOME_STORE_ID"
+        },
+        "join_type": "inner",
+        "kind": "relationship",
+        "last_reviewed": "2026-10-10",
+        "name": "Home store of each campaign-reachable customer",
+        "owner": {
+          "steward": "sam.ortiz",
+          "team": "marketing"
+        },
+        "provenance": {
+          "confirmed_by": "sam.ortiz",
+          "confirmed_on": "2026-10-10",
+          "from": "queries/marketing_pilot.bigquery.sql",
+          "lines": [
+            3,
+            11
+          ],
+          "method": "harvest",
+          "open_questions": [
+            "Should closed accounts (status C) be excluded? They cannot receive campaigns — CRM team to confirm.",
+            "Should staff accounts be excluded, as in customer.active_buyer?"
+          ],
+          "session": "2026-10-10-marketing"
+        },
+        "review_by": "2026-11-10",
+        "status": "reviewed",
+        "to": "dimension.home_store",
+        "version": 1
+      },
+      "domain": "marketing",
+      "kind": "relationship",
+      "path": "domains/marketing/relationships/rel.campaign_reachable__home_store.yaml",
+      "summary": "Home store of each campaign-reachable customer",
+      "used_by": [],
+      "uses": [
+        "customer.campaign_reachable",
+        "dimension.home_store"
+      ]
+    },
+    "tpl.active_customers_by_store_and_join_month": {
+      "data": {
+        "description": "The management-pack query, parameterised by snapshot month.",
+        "dimensions": [
+          "dimension.home_store:region",
+          "dimension.home_store:store",
+          "dimension.join_month"
+        ],
+        "entity": "customer.active_buyer",
+        "expected": {
+          "executes": true,
+          "reconciles_with": "anchor.monthly_pack.active_customers"
+        },
+        "expires": "2027-04-03",
+        "id": "tpl.active_customers_by_store_and_join_month",
+        "kind": "template",
+        "metric": "metric.customer_count",
+        "name": "Active customers by store and join month",
+        "owner": {
+          "steward": "avery.lane",
+          "team": "core_analytics"
+        },
+        "parameters": {
+          "period_end": {
+            "description": "Snapshot month (YYYY-MM)",
+            "type": "period"
+          }
+        },
+        "provenance": {
+          "confirmed_by": "avery.lane",
+          "confirmed_on": "2026-10-03",
+          "from": "queries/core_analytics_pilot.oracle.sql",
+          "lines": [
+            4,
+            20
+          ],
+          "method": "harvest",
+          "session": "2026-10-03-core-analytics"
+        },
+        "question_pattern": "active customers by region, store and the month they first bought, for {period_end}",
+        "review_by": "2027-04-03",
+        "sql": {
+          "cloud": "tpl.active_customers_by_store_and_join_month.cloud.sql",
+          "legacy": "tpl.active_customers_by_store_and_join_month.legacy.sql"
+        },
+        "status": "certified",
+        "uses": [
+          "customer.active_buyer@1",
+          "metric.customer_count@1",
+          "dimension.home_store@1",
+          "dimension.join_month@1"
+        ],
+        "verified_by": "avery.lane",
+        "verified_on": "2026-10-03",
+        "version": 1
+      },
+      "domain": "core_analytics",
+      "kind": "template",
+      "path": "domains/core_analytics/templates/tpl.active_customers_by_store_and_join_month.yaml",
+      "summary": "The management-pack query, parameterised by snapshot month",
+      "used_by": [],
+      "uses": [
+        "anchor.monthly_pack.active_customers",
+        "customer.active_buyer",
+        "dimension.home_store",
+        "dimension.join_month",
+        "metric.customer_count"
+      ]
+    },
+    "tpl.reachable_customers_by_region": {
+      "data": {
+        "description": "Marketing's campaign-sizing query, parameterised by snapshot month.",
+        "dimensions": [
+          "dimension.home_store:region"
+        ],
+        "entity": "customer.campaign_reachable",
+        "expected": {
+          "executes": true
+        },
+        "expires": "2026-11-10",
+        "id": "tpl.reachable_customers_by_region",
+        "kind": "template",
+        "last_reviewed": "2026-10-10",
+        "metric": "metric.customer_count",
+        "name": "Campaign-reachable customers by region",
+        "owner": {
+          "steward": "sam.ortiz",
+          "team": "marketing"
+        },
+        "parameters": {
+          "period_end": {
+            "description": "Snapshot month (YYYY-MM)",
+            "type": "period"
+          }
+        },
+        "provenance": {
+          "confirmed_by": "sam.ortiz",
+          "confirmed_on": "2026-10-10",
+          "from": "queries/marketing_pilot.bigquery.sql",
+          "lines": [
+            3,
+            11
+          ],
+          "method": "harvest",
+          "open_questions": [
+            "Should closed accounts (status C) be excluded? They cannot receive campaigns — CRM team to confirm.",
+            "Should staff accounts be excluded, as in customer.active_buyer?"
+          ],
+          "session": "2026-10-10-marketing"
+        },
+        "question_pattern": "campaign-reachable customers by region for {period_end}",
+        "review_by": "2026-11-10",
+        "sql": {
+          "cloud": "tpl.reachable_customers_by_region.cloud.sql",
+          "legacy": "tpl.reachable_customers_by_region.legacy.sql"
+        },
+        "status": "reviewed",
+        "uses": [
+          "customer.campaign_reachable@1",
+          "metric.customer_count@1",
+          "dimension.home_store@1"
+        ],
+        "verified_by": "sam.ortiz",
+        "verified_on": "2026-10-10",
+        "version": 1
+      },
+      "domain": "marketing",
+      "kind": "template",
+      "path": "domains/marketing/templates/tpl.reachable_customers_by_region.yaml",
+      "summary": "Marketing's campaign-sizing query, parameterised by snapshot month",
+      "used_by": [],
+      "uses": [
+        "customer.campaign_reachable",
+        "dimension.home_store",
+        "metric.customer_count"
+      ]
+    }
+  },
+  "generated_by": "sl build",
+  "tables": [
+    {
+      "columns": 7,
+      "counterpart": "analytics.customers",
+      "migration_status": "migrated",
+      "platform": "legacy",
+      "table": "DWH.CUSTOMERS",
+      "used_by": [
+        "customer.any_account",
+        "dimension.join_month",
+        "dimension.signup_month"
+      ]
+    },
+    {
+      "columns": 8,
+      "counterpart": "analytics.customer_monthly",
+      "migration_status": "migrated",
+      "platform": "legacy",
+      "table": "DWH.CUSTOMER_MONTHLY",
+      "used_by": [
+        "customer.active_buyer",
+        "customer.campaign_reachable"
+      ]
+    },
+    {
+      "columns": 3,
+      "counterpart": "analytics.loyalty_members",
+      "migration_status": "migrated",
+      "platform": "legacy",
+      "table": "DWH.LOYALTY_MEMBERS",
+      "used_by": [
+        "customer.loyalty_member"
+      ]
+    },
+    {
+      "columns": 6,
+      "counterpart": "analytics.orders",
+      "migration_status": "migrated",
+      "platform": "legacy",
+      "table": "DWH.ORDERS",
+      "used_by": []
+    },
+    {
+      "columns": 5,
+      "counterpart": "analytics.stores",
+      "migration_status": "migrated",
+      "platform": "legacy",
+      "table": "DWH.STORES",
+      "used_by": [
+        "dimension.first_purchase_store",
+        "dimension.home_store"
+      ]
+    },
+    {
+      "columns": 3,
+      "counterpart": null,
+      "migration_status": "pending",
+      "platform": "legacy",
+      "table": "DWH.STORE_TARGETS",
+      "used_by": []
+    },
+    {
+      "columns": 8,
+      "counterpart": "DWH.CUSTOMER_MONTHLY",
+      "migration_status": "migrated",
+      "platform": "cloud",
+      "table": "analytics.customer_monthly",
+      "used_by": [
+        "customer.active_buyer",
+        "customer.campaign_reachable"
+      ]
+    },
+    {
+      "columns": 7,
+      "counterpart": "DWH.CUSTOMERS",
+      "migration_status": "migrated",
+      "platform": "cloud",
+      "table": "analytics.customers",
+      "used_by": [
+        "customer.any_account",
+        "dimension.join_month",
+        "dimension.signup_month"
+      ]
+    },
+    {
+      "columns": 3,
+      "counterpart": "DWH.LOYALTY_MEMBERS",
+      "migration_status": "migrated",
+      "platform": "cloud",
+      "table": "analytics.loyalty_members",
+      "used_by": [
+        "customer.loyalty_member"
+      ]
+    },
+    {
+      "columns": 6,
+      "counterpart": "DWH.ORDERS",
+      "migration_status": "migrated",
+      "platform": "cloud",
+      "table": "analytics.orders",
+      "used_by": []
+    },
+    {
+      "columns": 5,
+      "counterpart": "DWH.STORES",
+      "migration_status": "migrated",
+      "platform": "cloud",
+      "table": "analytics.stores",
+      "used_by": [
+        "dimension.first_purchase_store",
+        "dimension.home_store"
+      ]
+    }
+  ],
+  "teams": {
+    "core_analytics": [
+      "anchor.monthly_pack.active_customers",
+      "customer.active_buyer",
+      "customer.any_account",
+      "dimension.first_purchase_store",
+      "dimension.home_store",
+      "dimension.join_month",
+      "dimension.signup_month",
+      "metric.customer_count",
+      "rel.active_buyer__first_purchase_store",
+      "rel.active_buyer__home_store",
+      "rel.active_buyer__join_month",
+      "rel.active_buyer__signup_month",
+      "rel.any_account__home_store",
+      "rel.any_account__join_month",
+      "rel.any_account__signup_month",
+      "tpl.active_customers_by_store_and_join_month"
+    ],
+    "marketing": [
+      "customer.campaign_reachable",
+      "customer.loyalty_member",
+      "rel.campaign_reachable__home_store",
+      "tpl.reachable_customers_by_region"
+    ]
+  }
+}
