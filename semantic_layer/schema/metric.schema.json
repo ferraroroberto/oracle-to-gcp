@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "metric.schema.json",
+  "title": "Metric — a measure computed over an entity",
+  "allOf": [{"$ref": "_common.schema.json#/$defs/governance"}],
+  "required": ["expression", "applies_to", "additivity"],
+  "unevaluatedProperties": false,
+  "properties": {
+    "kind": {"const": "metric"},
+    "expression": {
+      "type": "string",
+      "description": "Portable aggregate; {entity.key} is replaced by the entity's key column, {t} by its alias."
+    },
+    "applies_to": {"type": "array", "minItems": 1, "items": {"$ref": "_common.schema.json#/$defs/id"}},
+    "additivity": {"enum": ["additive", "non_additive", "non_additive_over_time"]}
+  }
+}

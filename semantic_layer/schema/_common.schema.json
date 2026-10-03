@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "_common.schema.json",
+  "title": "Shared building blocks for every semantic-layer definition",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$",
+      "description": "Stable dotted id, e.g. customer.active_buyer. Never reused, never renamed."
+    },
+    "idref": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+(@[0-9]+)?$",
+      "description": "Reference to a definition id, optionally pinned to a version (id@3)."
+    },
+    "dimref": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+(:[a-z0-9_]+)?$",
+      "description": "Dimension id with an optional hierarchy level (dimension.home_store:region)."
+    },
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "period": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+    "status": {"enum": ["draft", "reviewed", "certified", "deprecated"]},
+    "owner": {
+      "type": "object",
+      "required": ["team", "steward"],
+      "additionalProperties": false,
+      "properties": {
+        "team": {"type": "string", "description": "Owning team; matches the domains/<team>/ folder and CODEOWNERS."},
+        "steward": {"type": "string", "description": "The named person to ask when it breaks."}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["method"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"enum": ["harvest", "capture", "contribute"]},
+        "from": {"type": "string", "description": "Source query path, or 'conversation'."},
+        "lines": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+        "session": {"type": "string"},
+        "confirmed_by": {"type": "string"},
+        "confirmed_on": {"$ref": "#/$defs/date"},
+        "open_questions": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "ai_context": {
+      "description": "OSI-aligned hints for agents.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {"type": "string"},
+        "examples": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "confusion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "difference"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "difference": {"type": "string"}
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "required": ["platform", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "platform": {"enum": ["legacy", "cloud"]},
+        "source": {"type": "string", "description": "schema.table on that platform."},
+        "key": {"type": "string"},
+        "time_column": {"type": "string"},
+        "filter": {"type": "string", "description": "Predicate in the platform's dialect; {t} is the table alias."},
+        "expression": {"type": "string", "description": "Value expression in the platform's dialect; {t} is the table alias."},
+        "label_column": {"type": "string"},
+        "preferred": {"type": "boolean"},
+        "status": {"enum": ["active", "legacy", "proposed", "deprecated"]},
+        "review_note": {"type": "string"}
+      }
+    },
+    "check": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"enum": ["nullValues", "duplicateValues", "rowCount", "invalidValues", "freshness", "reconcile"]},
+        "column": {"type": "string"},
+        "columns": {"type": "array", "items": {"type": "string"}},
+        "valid_values": {"type": "array"},
+        "must_be": {"type": "number"},
+        "between": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+        "per": {"type": "string"},
+        "max_lag_days": {"type": "integer"},
+        "platforms": {"type": "array", "items": {"enum": ["legacy", "cloud"]}},
+        "measure": {"type": "string"},
+        "tolerance_pct": {"type": "number"}
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": ["id", "kind", "name", "owner", "status", "version"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "synonyms": {"type": "array", "items": {"type": "string"}},
+        "owner": {"$ref": "#/$defs/owner"},
+        "status": {"$ref": "#/$defs/status"},
+        "version": {"type": "integer", "minimum": 1},
+        "last_reviewed": {"$ref": "#/$defs/date"},
+        "review_by": {"$ref": "#/$defs/date"},
+        "replaced_by": {"$ref": "#/$defs/id"},
+        "not_to_be_confused_with": {"$ref": "#/$defs/confusion"},
+        "caveats": {"type": "array", "items": {"type": "string"}},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "ai_context": {"$ref": "#/$defs/ai_context"},
+        "custom_extensions": {"type": "object"}
+      }
+    }
+  }
+}
