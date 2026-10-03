@@ -1,0 +1,22 @@
+id: rel.any_account__home_store
+kind: relationship
+name: Home store of each registered account
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'
+from: customer.any_account
+to: dimension.home_store
+join:
+  cloud: '{to}.store_id = {from}.home_store_id'
+  legacy: '{to}.STORE_ID = {from}.HOME_STORE_ID'
+join_type: inner
+cardinality: many_to_one
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'

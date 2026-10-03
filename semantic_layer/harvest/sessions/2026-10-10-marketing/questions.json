@@ -1,0 +1,78 @@
+[
+  {
+    "guess": null,
+    "id": "q01",
+    "question": "What business question does this query answer, and who uses the result?",
+    "topic": "purpose"
+  },
+  {
+    "definition": "customer.active_buyer",
+    "guess": null,
+    "id": "q02",
+    "question": "On analytics.customer_monthly your filters differ from certified customer.active_buyer: only in your query [\"last_purchase_date >= snapshot_date - INTERVAL '6' MONTH\"], only in the definition [\"account_status = 'A'\", 'is_staff = FALSE', \"last_purchase_date >= snapshot_date - INTERVAL '12' MONTH\"]. A different concept, or should it use the certified one?",
+    "topic": "conflict"
+  },
+  {
+    "guess": null,
+    "id": "q03",
+    "predicate": "cm.last_purchase_date >= DATE_SUB(cm.snapshot_date, INTERVAL '6' MONTH)",
+    "question": "`cm.last_purchase_date >= DATE_SUB(cm.snapshot_date, INTERVAL '6' MONTH)` \u2014 what does this value mean, and why is it included or excluded?",
+    "topic": "literal"
+  },
+  {
+    "alias": "s",
+    "guess": "probes say many_to_one",
+    "id": "q04",
+    "question": "Join to analytics.stores (s) on s.store_id = cm.home_store_id: is every row expected to match exactly one?",
+    "topic": "join"
+  },
+  {
+    "alias": "lm",
+    "guess": "probes say many_to_one",
+    "id": "q05",
+    "question": "Why LEFT JOIN analytics.loyalty_members (lm)? What does a missing match mean?",
+    "topic": "join"
+  },
+  {
+    "alias": "lm",
+    "guess": null,
+    "id": "q06",
+    "question": "analytics.loyalty_members (lm) is joined but never used. Leftover, or a hidden filter?",
+    "topic": "unused"
+  },
+  {
+    "guess": "s.region",
+    "id": "q07",
+    "question": "What is one row of the output?",
+    "topic": "grain"
+  },
+  {
+    "guess": null,
+    "id": "q08",
+    "question": "Which published figure should this match (report, page, period)?",
+    "topic": "anchor"
+  },
+  {
+    "guess": null,
+    "id": "q09",
+    "question": "What breaks this query, or what have people got wrong with it before?",
+    "topic": "caveats"
+  },
+  {
+    "guess": null,
+    "id": "q10",
+    "question": "Who owns each source table, and who is the steward to ask when this breaks?",
+    "tables": [
+      "analytics.customer_monthly",
+      "analytics.loyalty_members",
+      "analytics.stores"
+    ],
+    "topic": "owners"
+  },
+  {
+    "guess": "the period (2026-08-31)",
+    "id": "q11",
+    "question": "Which parts would people want to change (period, region, \u2026)?",
+    "topic": "parameters"
+  }
+]

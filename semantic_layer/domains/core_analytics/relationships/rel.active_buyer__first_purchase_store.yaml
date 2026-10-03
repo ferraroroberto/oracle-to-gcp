@@ -1,0 +1,25 @@
+id: rel.active_buyer__first_purchase_store
+kind: relationship
+name: First-purchase store of each active buyer
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'
+from: customer.active_buyer
+to: dimension.first_purchase_store
+join:
+  cloud: '{to}.store_id = {from}.first_purchase_store_id'
+  legacy: '{to}.STORE_ID = {from}.FIRST_PURCHASE_STORE_ID'
+join_type: inner
+cardinality: many_to_one
+cardinality_evidence: stores.store_id is unique (harvest probe, 2026-10-03 session)
+caveats:
+- Active buyers always have a first purchase, so the inner join drops nobody.
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'

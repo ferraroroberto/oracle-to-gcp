@@ -1,0 +1,32 @@
+id: metric.customer_count
+kind: metric
+name: Number of customers
+description: Distinct customers in the chosen customer population.
+synonyms:
+- number of customers
+- customer count
+- how many customers
+- headcount
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+expression: COUNT(DISTINCT {entity.key})
+applies_to:
+- customer.active_buyer
+- customer.any_account
+- customer.campaign_reachable
+- customer.loyalty_member
+additivity: non_additive_over_time
+provenance:
+  method: harvest
+  from: queries/core_analytics_pilot.oracle.sql
+  lines:
+  - 4
+  - 20
+  session: 2026-10-03-core-analytics
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'

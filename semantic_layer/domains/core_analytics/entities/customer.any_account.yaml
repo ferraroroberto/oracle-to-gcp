@@ -1,0 +1,62 @@
+id: customer.any_account
+kind: entity
+name: Registered account (open or pending)
+description: >-
+  Every registered account that is open (A) or pending verification (P), whether or not it has ever
+  bought. The onboarding team's population; current state, not a monthly snapshot.
+synonyms:
+- customer
+- client
+- account
+- registered account
+- registered customer
+grain: one row per customer account (current state)
+not_to_be_confused_with:
+- id: customer.active_buyer
+  difference: only open, non-staff accounts that bought in the last 12 months (management pack)
+- id: customer.campaign_reachable
+  difference: marketing's 6-month buyers from the monthly snapshot
+caveats:
+- Includes staff accounts; filter them out if the question is about real customers.
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'
+bindings:
+- platform: cloud
+  source: analytics.customers
+  key: customer_id
+  filter: '{t}.account_status IN (''A'', ''P'')'
+  preferred: true
+  status: active
+- platform: legacy
+  source: DWH.CUSTOMERS
+  key: CUSTOMER_ID
+  filter: '{t}.ACCOUNT_STATUS IN (''A'', ''P'')'
+  preferred: false
+  status: legacy
+checks:
+- type: nullValues
+  column: CUSTOMER_ID
+  must_be: 0
+- type: duplicateValues
+  columns:
+  - CUSTOMER_ID
+  must_be: 0
+- type: invalidValues
+  column: ACCOUNT_STATUS
+  valid_values: [A, C, P]
+- type: reconcile
+  platforms:
+  - legacy
+  - cloud
+  measure: COUNT(DISTINCT {entity.key})
+  tolerance_pct: 0.1
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'

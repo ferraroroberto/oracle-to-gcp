@@ -1,0 +1,30 @@
+id: rel.campaign_reachable__home_store
+kind: relationship
+name: Home store of each campaign-reachable customer
+owner:
+  team: marketing
+  steward: sam.ortiz
+status: reviewed
+version: 1
+from: customer.campaign_reachable
+to: dimension.home_store
+join:
+  cloud: '{to}.store_id = {from}.home_store_id'
+  legacy: '{to}.STORE_ID = {from}.HOME_STORE_ID'
+join_type: inner
+cardinality: many_to_one
+provenance:
+  method: harvest
+  from: queries/marketing_pilot.bigquery.sql
+  lines:
+  - 3
+  - 11
+  session: 2026-10-10-marketing
+  confirmed_by: sam.ortiz
+  confirmed_on: '2026-10-10'
+  open_questions:
+  - Should closed accounts (status C) be excluded? They cannot receive campaigns — CRM team to confirm.
+  - Should staff accounts be excluded, as in customer.active_buyer?
+cardinality_evidence: 'harvest probe: key uniqueness on both sides'
+last_reviewed: '2026-10-10'
+review_by: '2026-11-10'

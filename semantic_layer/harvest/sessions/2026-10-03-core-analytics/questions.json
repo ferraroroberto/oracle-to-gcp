@@ -1,0 +1,85 @@
+[
+  {
+    "guess": null,
+    "id": "q01",
+    "question": "What business question does this query answer, and who uses the result?",
+    "topic": "purpose"
+  },
+  {
+    "guess": null,
+    "id": "q02",
+    "predicate": "cm.ACCOUNT_STATUS = 'A'",
+    "question": "`cm.ACCOUNT_STATUS = 'A'` \u2014 what does this value mean, and why is it included or excluded? Observed: A 88%, C 8%, P 3%.",
+    "topic": "literal"
+  },
+  {
+    "guess": null,
+    "id": "q03",
+    "predicate": "cm.IS_STAFF = 0",
+    "question": "`cm.IS_STAFF = 0` \u2014 what does this value mean, and why is it included or excluded? Observed: 0 98%, 1 2%.",
+    "topic": "literal"
+  },
+  {
+    "guess": null,
+    "id": "q04",
+    "predicate": "cm.LAST_PURCHASE_DATE >= ADD_MONTHS(cm.SNAPSHOT_DATE, -12)",
+    "question": "`cm.LAST_PURCHASE_DATE >= ADD_MONTHS(cm.SNAPSHOT_DATE, -12)` \u2014 what does this value mean, and why is it included or excluded?",
+    "topic": "literal"
+  },
+  {
+    "cte": "active",
+    "guess": null,
+    "id": "q05",
+    "question": "CTE `active` (from DWH.CUSTOMER_MONTHLY): is this a named business concept? What would you call it, and what is one row?",
+    "topic": "concept"
+  },
+  {
+    "alias": "s",
+    "guess": "probes say many_to_one",
+    "id": "q06",
+    "question": "Join to DWH.STORES (s) on s.STORE_ID = a.HOME_STORE_ID: is every row expected to match exactly one?",
+    "topic": "join"
+  },
+  {
+    "alias": "c",
+    "guess": "probes say many_to_one",
+    "id": "q07",
+    "question": "Join to DWH.CUSTOMERS (c) on c.CUSTOMER_ID = a.CUSTOMER_ID: is every row expected to match exactly one?",
+    "topic": "join"
+  },
+  {
+    "guess": "s.REGION, s.STORE_NAME, TRUNC(c.FIRST_PURCHASE_DATE, 'MONTH')",
+    "id": "q08",
+    "question": "What is one row of the output?",
+    "topic": "grain"
+  },
+  {
+    "guess": null,
+    "id": "q09",
+    "question": "Which published figure should this match (report, page, period)?",
+    "topic": "anchor"
+  },
+  {
+    "guess": null,
+    "id": "q10",
+    "question": "What breaks this query, or what have people got wrong with it before?",
+    "topic": "caveats"
+  },
+  {
+    "guess": null,
+    "id": "q11",
+    "question": "Who owns each source table, and who is the steward to ask when this breaks?",
+    "tables": [
+      "DWH.CUSTOMERS",
+      "DWH.CUSTOMER_MONTHLY",
+      "DWH.STORES"
+    ],
+    "topic": "owners"
+  },
+  {
+    "guess": "the period (2026-08-31)",
+    "id": "q12",
+    "question": "Which parts would people want to change (period, region, \u2026)?",
+    "topic": "parameters"
+  }
+]

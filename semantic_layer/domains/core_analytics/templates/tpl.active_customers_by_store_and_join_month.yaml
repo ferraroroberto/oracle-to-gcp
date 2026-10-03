@@ -1,0 +1,44 @@
+id: tpl.active_customers_by_store_and_join_month
+kind: template
+name: Active customers by store and join month
+description: The management-pack query, parameterised by snapshot month.
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+question_pattern: active customers by region, store and the month they first bought, for {period_end}
+entity: customer.active_buyer
+metric: metric.customer_count
+dimensions:
+- dimension.home_store:region
+- dimension.home_store:store
+- dimension.join_month
+parameters:
+  period_end:
+    type: period
+    description: Snapshot month (YYYY-MM)
+uses:
+- customer.active_buyer@1
+- metric.customer_count@1
+- dimension.home_store@1
+- dimension.join_month@1
+sql:
+  legacy: tpl.active_customers_by_store_and_join_month.legacy.sql
+  cloud: tpl.active_customers_by_store_and_join_month.cloud.sql
+expected:
+  executes: true
+  reconciles_with: anchor.monthly_pack.active_customers
+verified_by: avery.lane
+verified_on: '2026-10-03'
+provenance:
+  method: harvest
+  from: queries/core_analytics_pilot.oracle.sql
+  lines:
+  - 4
+  - 20
+  session: 2026-10-03-core-analytics
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'
+expires: '2027-04-03'
+review_by: '2027-04-03'

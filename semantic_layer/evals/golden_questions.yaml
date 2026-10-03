@@ -1,0 +1,122 @@
+# Golden questions: real questions with the answer the layer should give.
+# `terms` are what the agent extracts from the question (the LLM step); the
+# eval scores everything from there: resolution, clarification, template choice,
+# execution and anchor reconciliation. Entries from harvest sessions are merged
+# in by `sl harvest draft`.
+questions:
+- question: active customers by home store and join month for August 2026
+  terms: [active customers, home store, join month]
+  spec:
+    entity: customer.active_buyer
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:region, dimension.home_store:store, dimension.join_month]
+    period: '2026-08'
+  expect_clarification: false
+  expect_template: tpl.active_customers_by_store_and_join_month
+  expect_reconcile: true
+- question: how many customers per store
+  terms: [customers, store]
+  expect_clarification: true
+- question: campaign-reachable customers by region for August 2026
+  terms: [campaign-reachable customers, region]
+  spec:
+    entity: customer.campaign_reachable
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:region]
+    period: '2026-08'
+  expect_clarification: false
+  expect_template: null
+  expect_reconcile: false
+- question: how many registered accounts by signup month
+  terms: [registered accounts, signup month]
+  spec:
+    entity: customer.any_account
+    metric: metric.customer_count
+    dimensions: [dimension.signup_month]
+  expect_clarification: false
+  expect_template: null
+- question: active customers by first purchase store region for September 2026
+  terms: [active customers, first purchase store]
+  spec:
+    entity: customer.active_buyer
+    metric: metric.customer_count
+    dimensions: [dimension.first_purchase_store:region]
+    period: '2026-09'
+  expect_clarification: false
+  expect_template: null
+  expect_reconcile: true
+- question: customers by month joined
+  terms: [customers, month joined]
+  expect_clarification: true
+- question: how many loyalty members do we have
+  terms: [loyalty members]
+  spec:
+    entity: customer.loyalty_member
+    metric: metric.customer_count
+    dimensions: []
+  expect_clarification: false
+  expect_template: null
+- question: active customers by region for September 2026
+  terms: [active customers, region]
+  spec:
+    entity: customer.active_buyer
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:region]
+    period: '2026-09'
+  expect_clarification: false
+  expect_template: null
+  expect_reconcile: true
+- question: active customers in the North region by join month for August 2026
+  terms: [active customers, region, join month]
+  spec:
+    entity: customer.active_buyer
+    metric: metric.customer_count
+    dimensions: [dimension.join_month]
+    filters:
+    - {dimension: 'dimension.home_store:region', op: '=', value: North}
+    period: '2026-08'
+  expect_clarification: false
+  expect_template: null
+  expect_reconcile: false
+- question: campaign audience by store for August 2026
+  terms: [campaign audience, store]
+  expect_clarification: true
+- question: number of customers
+  terms: [number of customers]
+  expect_clarification: true
+- question: active buyers by district for August 2026
+  terms: [active buyers, district]
+  spec:
+    entity: customer.active_buyer
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:district]
+    period: '2026-08'
+  expect_clarification: false
+  expect_template: null
+  expect_reconcile: true
+- question: registered accounts by home store
+  terms: [registered accounts, home store]
+  spec:
+    entity: customer.any_account
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:store]
+  expect_clarification: false
+  expect_template: null
+- question: loyalty members by home store
+  terms: [loyalty members, home store]
+  spec:
+    entity: customer.loyalty_member
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:store]
+  expect_clarification: false
+  expect_error: no declared relationship
+- question: recent buyers by region for September 2026
+  terms: [recent buyers, region]
+  spec:
+    entity: customer.campaign_reachable
+    metric: metric.customer_count
+    dimensions: [dimension.home_store:region]
+    period: '2026-09'
+  expect_clarification: false
+  expect_template: null
+  expect_reconcile: false

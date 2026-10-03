@@ -1,0 +1,39 @@
+{
+  "filter_comparisons": [
+    {
+      "definition": "customer.active_buyer",
+      "only_in_definition": [
+        "account_status = 'A'",
+        "is_staff = FALSE",
+        "last_purchase_date >= snapshot_date - INTERVAL '12' MONTH"
+      ],
+      "only_in_query": [
+        "last_purchase_date >= snapshot_date - INTERVAL '6' MONTH"
+      ],
+      "outcome": "differs",
+      "status": "certified",
+      "table": "analytics.customer_monthly"
+    }
+  ],
+  "platform": "cloud",
+  "tables": [
+    {
+      "counterpart": "DWH.CUSTOMER_MONTHLY",
+      "in_catalog": true,
+      "migration_status": "migrated",
+      "table": "analytics.customer_monthly"
+    },
+    {
+      "counterpart": "DWH.LOYALTY_MEMBERS",
+      "in_catalog": true,
+      "migration_status": "migrated",
+      "table": "analytics.loyalty_members"
+    },
+    {
+      "counterpart": "DWH.STORES",
+      "in_catalog": true,
+      "migration_status": "migrated",
+      "table": "analytics.stores"
+    }
+  ]
+}

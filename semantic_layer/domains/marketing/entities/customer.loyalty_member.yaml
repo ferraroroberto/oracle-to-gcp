@@ -1,0 +1,50 @@
+id: customer.loyalty_member
+kind: entity
+name: Loyalty programme member
+description: Customer enrolled in the loyalty programme, at any tier, regardless of recent purchases.
+synonyms:
+- customer
+- loyalty member
+- member
+- programme member
+grain: one row per enrolled customer (current state)
+not_to_be_confused_with:
+- id: customer.active_buyer
+  difference: 12-month buyers with open accounts; membership is not required
+- id: customer.campaign_reachable
+  difference: 6-month buyers; membership is not required
+- id: customer.any_account
+  difference: every open or pending account, enrolled or not
+owner:
+  team: marketing
+  steward: sam.ortiz
+status: certified
+version: 1
+last_reviewed: '2026-10-10'
+review_by: '2027-04-10'
+bindings:
+- platform: cloud
+  source: analytics.loyalty_members
+  key: customer_id
+  preferred: true
+  status: active
+- platform: legacy
+  source: DWH.LOYALTY_MEMBERS
+  key: CUSTOMER_ID
+  status: legacy
+checks:
+- type: nullValues
+  column: customer_id
+  must_be: 0
+- type: duplicateValues
+  columns:
+  - customer_id
+  must_be: 0
+- type: invalidValues
+  column: tier
+  valid_values: [BRONZE, SILVER, GOLD]
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: sam.ortiz
+  confirmed_on: '2026-10-10'

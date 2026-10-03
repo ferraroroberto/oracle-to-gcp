@@ -1,0 +1,22 @@
+id: rel.any_account__join_month
+kind: relationship
+name: Join month of each registered account
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'
+from: customer.any_account
+to: dimension.join_month
+join:
+  cloud: '{to}.customer_id = {from}.customer_id'
+  legacy: '{to}.CUSTOMER_ID = {from}.CUSTOMER_ID'
+join_type: inner
+cardinality: many_to_one
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'

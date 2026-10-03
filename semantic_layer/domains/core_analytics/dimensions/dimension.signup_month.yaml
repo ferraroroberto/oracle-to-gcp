@@ -1,0 +1,36 @@
+id: dimension.signup_month
+kind: dimension
+name: Signup month
+description: Month the account was registered. Often long before the first purchase.
+synonyms:
+- signup month
+- registration month
+- month joined
+- month they joined
+not_to_be_confused_with:
+- id: dimension.join_month
+  difference: month of the first completed purchase ("joined" in the management pack)
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'
+bindings:
+- platform: cloud
+  source: analytics.customers
+  key: customer_id
+  expression: DATE_TRUNC({t}.signup_date, MONTH)
+  preferred: true
+  status: active
+- platform: legacy
+  source: DWH.CUSTOMERS
+  key: CUSTOMER_ID
+  expression: TRUNC({t}.SIGNUP_DATE, 'MONTH')
+  status: legacy
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'

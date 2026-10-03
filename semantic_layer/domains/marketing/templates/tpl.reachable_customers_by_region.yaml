@@ -1,0 +1,44 @@
+id: tpl.reachable_customers_by_region
+kind: template
+name: Campaign-reachable customers by region
+description: Marketing's campaign-sizing query, parameterised by snapshot month.
+owner:
+  team: marketing
+  steward: sam.ortiz
+status: reviewed
+version: 1
+question_pattern: campaign-reachable customers by region for {period_end}
+entity: customer.campaign_reachable
+metric: metric.customer_count
+dimensions:
+- dimension.home_store:region
+parameters:
+  period_end:
+    type: period
+    description: Snapshot month (YYYY-MM)
+uses:
+- customer.campaign_reachable@1
+- metric.customer_count@1
+- dimension.home_store@1
+sql:
+  cloud: tpl.reachable_customers_by_region.cloud.sql
+  legacy: tpl.reachable_customers_by_region.legacy.sql
+expected:
+  executes: true
+verified_by: sam.ortiz
+verified_on: '2026-10-10'
+provenance:
+  method: harvest
+  from: queries/marketing_pilot.bigquery.sql
+  lines:
+  - 3
+  - 11
+  session: 2026-10-10-marketing
+  confirmed_by: sam.ortiz
+  confirmed_on: '2026-10-10'
+  open_questions:
+  - Should closed accounts (status C) be excluded? They cannot receive campaigns — CRM team to confirm.
+  - Should staff accounts be excluded, as in customer.active_buyer?
+last_reviewed: '2026-10-10'
+review_by: '2026-11-10'
+expires: '2026-11-10'

@@ -1,0 +1,65 @@
+# Structured answers from interview.md (mock).
+session:
+  id: 2026-10-10-marketing
+  team: marketing
+  steward: sam.ortiz
+  interviewee: sam.ortiz
+  query: queries/marketing_pilot.bigquery.sql
+  platform: cloud
+  date: 2026-10-10
+
+business_question: How many customers can a campaign reach in each region?
+
+entities:
+  - id: customer.campaign_reachable
+    from_alias: cm
+    key: customer_id
+    time_column: snapshot_date
+    name: Campaign-reachable customer (bought in the last 6 months)
+    synonyms: [customer, client, reachable customer, campaign audience, recent buyer]
+    description: >
+      Customer with a completed purchase in the 6 months up to the snapshot date.
+      Marketing's campaign rule. No account-status or staff filter (see open questions).
+    grain: one row per customer per month-end snapshot
+    not_to_be_confused_with:
+      - id: customer.active_buyer
+        difference: management-pack definition — 12 months, open accounts only, staff excluded
+      - id: customer.any_account
+        difference: every open or pending account, whether or not it ever bought
+    caveats:
+      - Includes closed and staff accounts — likely over-counts the reachable audience (open question).
+
+dimensions:
+  - id: dimension.home_store
+    from_join: s
+    reuse: true
+
+template:
+  id: tpl.reachable_customers_by_region
+  name: Campaign-reachable customers by region
+  description: Marketing's campaign-sizing query, parameterised by snapshot month.
+  question_pattern: "campaign-reachable customers by region for {period_end}"
+  entity: customer.campaign_reachable
+  metric: metric.customer_count
+  dimensions: [dimension.home_store:region]
+  uses: [customer.campaign_reachable, metric.customer_count, dimension.home_store]
+  parameters:
+    period:
+      replaces: "2026-08-31"
+
+golden_questions:
+  - question: campaign-reachable customers by region for August 2026
+    terms: [campaign-reachable customers, region]
+    spec:
+      entity: customer.campaign_reachable
+      metric: metric.customer_count
+      dimensions: [dimension.home_store:region]
+      period: "2026-08"
+    expect_clarification: false
+    # The template is only 'reviewed' (open questions), so the agent must not treat it as certified.
+    expect_template: null
+    expect_reconcile: false
+
+open_questions:
+  - Should closed accounts (status C) be excluded? They cannot receive campaigns — CRM team to confirm.
+  - Should staff accounts be excluded, as in customer.active_buyer?

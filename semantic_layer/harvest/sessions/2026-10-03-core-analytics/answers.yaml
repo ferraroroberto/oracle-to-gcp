@@ -1,0 +1,117 @@
+# Structured answers from interview.md (mock). The semantic-harvest skill writes
+# this file from the conversation; `sl harvest draft` merges it with parse.json
+# and probes.json into draft definitions.
+session:
+  id: 2026-10-03-core-analytics
+  team: core_analytics
+  steward: avery.lane
+  interviewee: avery.lane
+  query: queries/core_analytics_pilot.oracle.sql
+  platform: legacy
+  date: 2026-10-03
+
+business_question: >
+  How many active customers does each store have, split by the month they first
+  bought? (Monthly management pack, "customer base" page.)
+
+entities:
+  - id: customer.active_buyer
+    from_alias: active
+    key: CUSTOMER_ID
+    time_column: SNAPSHOT_DATE
+    name: Active customer (bought in the last 12 months)
+    synonyms: [customer, client, active customer, active client, buyer]
+    description: >
+      Open account (status A) that is not a staff account and completed at least
+      one purchase in the 12 months up to the snapshot date. Pending accounts (P)
+      cannot buy yet and closed accounts (C) are excluded.
+    grain: one row per customer per month-end snapshot
+    not_to_be_confused_with:
+      - id: customer.any_account
+        difference: every open or pending registered account, whether or not it ever bought
+      - id: customer.campaign_reachable
+        difference: marketing's 6-month window, with no account-status or staff filter
+    caveats:
+      - "Snapshot table: always pin one snapshot_date; summing across months counts each customer up to 12 times."
+      - The 12-month window is the leadership-approved definition, shared with finance.
+    ai_context:
+      instructions: >
+        If the user says "customer" with no qualifier, ask whether they mean active
+        customers (12-month buyers), any registered account, or marketing's
+        campaign-reachable customers, showing each one's difference in one line.
+      examples: ["how many customers do we have", "active customers by store"]
+    anchors: [anchor.monthly_pack.active_customers]
+
+dimensions:
+  - id: dimension.home_store
+    from_join: s
+    name: Home store
+    synonyms: [store, shop, location, home store, region, district]
+    description: Store assigned to the customer at signup (always present). Rolls up to district and region.
+    levels:
+      store: STORE_NAME
+      district: DISTRICT
+      region: REGION
+    not_to_be_confused_with:
+      - id: dimension.first_purchase_store
+        difference: store where the customer completed their first purchase
+  - id: dimension.join_month
+    from_join: c
+    expression_from_output: JOIN_MONTH
+    name: Join month (first purchase)
+    synonyms: [join month, month joined, month they joined, cohort month, cohort]
+    description: Month of the customer's first completed purchase. "Joined" means first purchase, not signup.
+    not_to_be_confused_with:
+      - id: dimension.signup_month
+        difference: month the account was registered, which may be long before any purchase
+
+metrics:
+  - id: metric.customer_count
+    name: Number of customers
+    synonyms: [number of customers, customer count, how many customers, headcount]
+    description: Distinct customers in the chosen customer population.
+    expression: COUNT(DISTINCT {entity.key})
+    applies_to: [customer.active_buyer]
+    additivity: non_additive_over_time
+
+anchors:
+  - id: anchor.monthly_pack.active_customers
+    name: Active customers — monthly management pack headline
+    published_in: Monthly management pack, "customer base" page (headline figure)
+    team: core_analytics
+    measures: {metric: metric.customer_count, entity: customer.active_buyer}
+    values:
+      - {period: 2026-08, value: 446}
+      - {period: 2026-09, value: 449}
+    tolerance_pct: 0.5
+
+template:
+  id: tpl.active_customers_by_store_and_join_month
+  name: Active customers by store and join month
+  description: The management-pack query, parameterised by snapshot month.
+  question_pattern: "active customers by region, store and the month they first bought, for {period_end}"
+  entity: customer.active_buyer
+  metric: metric.customer_count
+  dimensions: [dimension.home_store:region, dimension.home_store:store, dimension.join_month]
+  uses: [customer.active_buyer, metric.customer_count, dimension.home_store, dimension.join_month]
+  reconciles_with: anchor.monthly_pack.active_customers
+  parameters:
+    period:
+      replaces: "2026-08-31"
+
+golden_questions:
+  - question: active customers by home store and join month for August 2026
+    terms: [active customers, home store, join month]
+    spec:
+      entity: customer.active_buyer
+      metric: metric.customer_count
+      dimensions: [dimension.home_store:region, dimension.home_store:store, dimension.join_month]
+      period: "2026-08"
+    expect_clarification: false
+    expect_template: tpl.active_customers_by_store_and_join_month
+    expect_reconcile: true
+  - question: how many customers per store
+    terms: [customers, store]
+    expect_clarification: true
+
+open_questions: []
