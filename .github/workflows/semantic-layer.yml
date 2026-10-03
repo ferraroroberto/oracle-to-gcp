@@ -1,0 +1,34 @@
+name: semantic-layer
+
+# The semantic layer's CI gate: definitions validate, generated docs are current,
+# the golden questions still pass, and the toolkit's tests are green. Runs only
+# when the layer or its skills change.
+on:
+  pull_request:
+    paths:
+      - "semantic_layer/**"
+      - ".github/skills/semantic-*/**"
+      - ".github/workflows/semantic-layer.yml"
+  push:
+    branches: [main]
+    paths:
+      - "semantic_layer/**"
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install toolkit dependencies
+        run: pip install duckdb sqlglot PyYAML jsonschema pytest
+      - name: Validate definitions
+        run: python -m semantic_layer validate
+      - name: Generated build/ is up to date
+        run: python -m semantic_layer build --check
+      - name: Golden-question evals
+        run: python -m semantic_layer eval
+      - name: Toolkit tests
+        run: python -m pytest semantic_layer/tests -q
