@@ -97,13 +97,42 @@ flowchart TB
   GCSIO -->|optional, ADC| GCS[("Google Cloud Storage")]
   BQIO -->|optional, real creds| BQPROD
 
+  subgraph semantic["semantic_layer/ — team semantic layer spike (self-contained, no imports from src/)"]
+    SLCLI["sl/cli.py — python -m semantic_layer"]
+    SLMODEL["sl/model.py + sl/validate.py\nYAML definitions → resolved model; CI rules"]
+    SLHARVEST["sl/harvest.py\nsqlglot parse · xref · aggregate probes · interview questions · drafts"]
+    SLASK["sl/ask.py\nresolve · template-first · compose · lint · dry run · reconcile · provenance"]
+    SLOPS["sl/checks.py · sl/disagree.py · sl/evals.py · sl/capture.py · sl/build.py · sl/find.py"]
+    SLP2["sl/phase2/ (opt-in)\nbulk · checks_full · navigator · export_osi"]
+    SLPLAT["sl/platforms.py\nMockDuckDB | BigQuery | Oracle adapters"]
+    SLCONTENT[("domains/ · catalog/ · harvest/ · evals/ · build/")]
+    SLMOCK[("semantic_layer/.mock/\nlegacy.duckdb · cloud.duckdb")]
+  end
+  SKILLS[".github/skills/semantic-*\nask · find · harvest · contribute · steward"] --> SLCLI
+  SLCLI --> SLMODEL
+  SLCLI --> SLHARVEST
+  SLCLI --> SLASK
+  SLCLI --> SLOPS
+  SLCLI -.->|flag-gated| SLP2
+  SLMODEL --> SLCONTENT
+  SLHARVEST --> SLPLAT
+  SLASK --> SLPLAT
+  SLOPS --> SLPLAT
+  SLP2 --> SLPLAT
+  SLPLAT --> SLMOCK
+  SLPLAT -->|optional, real creds| BQPROD
+  SLPLAT -->|optional, real creds| ORACLEDB
+
   subgraph testing["tests/ + scripts/"]
-    GATE["scripts/verify-before-ship.ps1\ncompileall + ruff + pytest (incl. e2e)"]
+    GATE["scripts/verify-before-ship.ps1\ncompileall + ruff + semantic layer gate + pytest (incl. e2e)"]
     UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py\ntests/test_query_cost_audit.py\ntests/test_query_optimization_loop.py"]
     E2E["tests/e2e/test_smoke.py\nStreamlit boot smoke (Playwright)"]
   end
+  SLTESTS["semantic_layer/tests/\nwalkthrough + per-module + phase2"]
   GATE --> UNIT
   GATE --> E2E
+  GATE --> SLTESTS
+  SLTESTS --> SLCLI
   UNIT --> RUN
   UNIT --> AUDIT
   UNIT --> COSTAUDIT
