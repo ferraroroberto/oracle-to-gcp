@@ -1,0 +1,27 @@
+id: rel.active_buyer__home_store
+kind: relationship
+name: Home store of each active buyer
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+from: customer.active_buyer
+to: dimension.home_store
+join:
+  legacy: '{to}.STORE_ID = {from}.HOME_STORE_ID'
+  cloud: '{to}.store_id = {from}.home_store_id'
+join_type: inner
+cardinality: many_to_one
+provenance:
+  method: harvest
+  from: queries/core_analytics_pilot.oracle.sql
+  lines:
+  - 4
+  - 20
+  session: 2026-10-03-core-analytics
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'
+cardinality_evidence: 'harvest probe: key uniqueness on both sides'
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'

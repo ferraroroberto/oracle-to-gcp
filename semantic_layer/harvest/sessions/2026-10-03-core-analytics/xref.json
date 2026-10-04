@@ -1,0 +1,35 @@
+{
+  "filter_comparisons": [
+    {
+      "outcome": "new",
+      "query_terms": [
+        "account_status = 'A'",
+        "is_staff = 0",
+        "last_purchase_date >= snapshot_date + INTERVAL (-12) MONTH",
+        "snapshot_date = CAST('2026-08-31' AS DATE)"
+      ],
+      "table": "DWH.CUSTOMER_MONTHLY"
+    }
+  ],
+  "platform": "legacy",
+  "tables": [
+    {
+      "counterpart": "analytics.customers",
+      "in_catalog": true,
+      "migration_status": "migrated",
+      "table": "DWH.CUSTOMERS"
+    },
+    {
+      "counterpart": "analytics.customer_monthly",
+      "in_catalog": true,
+      "migration_status": "migrated",
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "counterpart": "analytics.stores",
+      "in_catalog": true,
+      "migration_status": "migrated",
+      "table": "DWH.STORES"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+table: analytics.orders
+platform: cloud
+columns:
+- name: order_id
+  type: INTEGER
+  nullable: true
+- name: customer_id
+  type: INTEGER
+  nullable: true
+- name: store_id
+  type: INTEGER
+  nullable: true
+- name: order_date
+  type: DATE
+  nullable: true
+- name: amount
+  type: DECIMAL(10,2)
+  nullable: true
+- name: order_status
+  type: VARCHAR
+  nullable: true

@@ -1,0 +1,48 @@
+{
+  "platforms": {
+    "legacy": {
+      "adapter": "mock_duckdb",
+      "dialect": "oracle",
+      "mock_path": ".mock/legacy.duckdb",
+      "oracle": {
+        "username_env": "ORACLE_USERNAME",
+        "password_env": "ORACLE_PASSWORD",
+        "dsn_env": "ORACLE_DSN"
+      }
+    },
+    "cloud": {
+      "adapter": "mock_duckdb",
+      "dialect": "bigquery",
+      "mock_path": ".mock/cloud.duckdb",
+      "bigquery": {
+        "project_env": "GOOGLE_CLOUD_PROJECT"
+      }
+    }
+  },
+  "catalog": {
+    "exclude_schemas": ["ops"]
+  },
+  "harvest": {
+    "history_table": "ops.query_history",
+    "history_platform": "cloud"
+  },
+  "execution": {
+    "allow_execute": true,
+    "max_result_rows": 500
+  },
+  "evals": {
+    "thresholds": {
+      "resolution_accuracy": 0.9,
+      "clarification_accuracy": 0.9,
+      "template_accuracy": 0.9,
+      "execution_success": 0.9,
+      "reconcile_accuracy": 0.9
+    }
+  },
+  "phase2": {
+    "bulk_harvest": false,
+    "full_checks": false,
+    "navigator": false,
+    "osi_export": false
+  }
+}

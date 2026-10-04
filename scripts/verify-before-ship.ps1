@@ -7,9 +7,12 @@
     Runs, fail-fast, the checks for this Streamlit + Python pipeline prototype.
 
     Stages:
-      1. byte-compile  — every .py under app/ src/ tests/ parses
-      2. ruff          — lint the whole repo (ruff defaults + pyupgrade)
-      3. pytest        — unit + headless e2e (auto-boots Streamlit per its fixture)
+      1. byte-compile    — every .py under app/ src/ tests/ semantic_layer/ parses
+      2. ruff            — lint the whole repo (ruff defaults + pyupgrade)
+      3. semantic layer  — definitions validate, generated build/ is current,
+                           golden-question evals pass
+      4. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
+                           including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
     It anchors to the repo root, so run it from
@@ -40,8 +43,11 @@ function Invoke-Stage {
     Write-Host "[PASS] $Name" -ForegroundColor Green
 }
 
-Invoke-Stage "byte-compile"                       { & $py -m compileall -q app src tests }
+Invoke-Stage "byte-compile"                       { & $py -m compileall -q app src tests semantic_layer }
 Invoke-Stage "ruff"                               { & $py -m ruff check . }
+Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
+Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
+Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
 Invoke-Stage "pytest (unit + e2e)"                { & $py -m pytest }
 
 Write-Host ""

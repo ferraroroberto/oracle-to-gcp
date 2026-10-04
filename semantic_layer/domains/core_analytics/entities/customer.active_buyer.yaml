@@ -1,0 +1,98 @@
+id: customer.active_buyer
+kind: entity
+name: Active customer (bought in the last 12 months)
+description: 'Open account (status A) that is not a staff account and completed at least one purchase
+  in the 12 months up to the snapshot date. Pending accounts (P) cannot buy yet and closed accounts (C)
+  are excluded.
+
+  '
+synonyms:
+- customer
+- client
+- active customer
+- active client
+- buyer
+grain: one row per customer per month-end snapshot
+not_to_be_confused_with:
+- id: customer.any_account
+  difference: every open or pending registered account, whether or not it ever bought
+- id: customer.campaign_reachable
+  difference: marketing's 6-month window, with no account-status or staff filter
+caveats:
+- 'Snapshot table: always pin one snapshot_date; summing across months counts each customer up to 12 times.'
+- The 12-month window is the leadership-approved definition, shared with finance.
+ai_context:
+  instructions: 'If the user says "customer" with no qualifier, ask whether they mean active customers
+    (12-month buyers), any registered account, or marketing''s campaign-reachable customers, showing each
+    one''s difference in one line.
+
+    '
+  examples:
+  - how many customers do we have
+  - active customers by store
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+bindings:
+- platform: legacy
+  source: DWH.CUSTOMER_MONTHLY
+  key: CUSTOMER_ID
+  time_column: SNAPSHOT_DATE
+  filter: '{t}.ACCOUNT_STATUS = ''A'' AND {t}.IS_STAFF = 0 AND {t}.LAST_PURCHASE_DATE >= ADD_MONTHS({t}.SNAPSHOT_DATE,
+    -12)'
+  preferred: false
+  status: legacy
+- platform: cloud
+  source: analytics.customer_monthly
+  key: customer_id
+  time_column: snapshot_date
+  filter: '{t}.account_status = ''A'' AND {t}.is_staff = FALSE AND {t}.last_purchase_date >= DATE_SUB({t}.snapshot_date,
+    INTERVAL 12 MONTH)'
+  preferred: true
+  status: active
+  review_note: 'reviewed 2026-10-03 by avery.lane: auto-transpile kept ADD_MONTHS (not a BigQuery function)
+    and compared the BOOLEAN is_staff to 0 — fixed by hand'
+checks:
+- type: nullValues
+  column: CUSTOMER_ID
+  must_be: 0
+- type: duplicateValues
+  columns:
+  - CUSTOMER_ID
+  - SNAPSHOT_DATE
+  must_be: 0
+- type: rowCount
+  per: SNAPSHOT_DATE
+  between:
+  - 600
+  - 1000
+- type: invalidValues
+  column: ACCOUNT_STATUS
+  valid_values:
+  - A
+  - C
+  - P
+- type: freshness
+  column: SNAPSHOT_DATE
+  max_lag_days: 35
+- type: reconcile
+  platforms:
+  - legacy
+  - cloud
+  measure: COUNT(DISTINCT {entity.key})
+  tolerance_pct: 0.1
+anchors:
+- anchor.monthly_pack.active_customers
+provenance:
+  method: harvest
+  from: queries/core_analytics_pilot.oracle.sql
+  lines:
+  - 4
+  - 20
+  session: 2026-10-03-core-analytics
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'

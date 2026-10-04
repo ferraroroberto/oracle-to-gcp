@@ -1,0 +1,66 @@
+{
+  "distributions": [],
+  "join_cardinality": [
+    {
+      "cardinality": "many_to_one",
+      "right_alias": "s"
+    },
+    {
+      "cardinality": "many_to_one",
+      "right_alias": "lm"
+    }
+  ],
+  "keys": [
+    {
+      "column": "home_store_id",
+      "distinct": 12,
+      "rows": 8649,
+      "table": "analytics.customer_monthly",
+      "unique": false
+    },
+    {
+      "column": "store_id",
+      "distinct": 12,
+      "rows": 12,
+      "table": "analytics.stores",
+      "unique": true
+    },
+    {
+      "column": "customer_id",
+      "distinct": 800,
+      "rows": 8649,
+      "table": "analytics.customer_monthly",
+      "unique": false
+    },
+    {
+      "column": "customer_id",
+      "distinct": 186,
+      "rows": 186,
+      "table": "analytics.loyalty_members",
+      "unique": true
+    }
+  ],
+  "null_rates": [
+    {
+      "column": "home_store_id",
+      "null_share": 0.0,
+      "table": "analytics.customer_monthly"
+    },
+    {
+      "column": "store_id",
+      "null_share": 0.0,
+      "table": "analytics.stores"
+    },
+    {
+      "column": "customer_id",
+      "null_share": 0.0,
+      "table": "analytics.customer_monthly"
+    },
+    {
+      "column": "customer_id",
+      "null_share": 0.0,
+      "table": "analytics.loyalty_members"
+    }
+  ],
+  "platform": "cloud"
+}

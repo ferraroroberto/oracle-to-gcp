@@ -1,0 +1,53 @@
+id: dimension.home_store
+kind: dimension
+name: Home store
+description: Store assigned to the customer at signup (always present). Rolls up to district and region.
+synonyms:
+- store
+- shop
+- location
+- home store
+- region
+- district
+not_to_be_confused_with:
+- id: dimension.first_purchase_store
+  difference: store where the customer completed their first purchase
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+levels:
+- name: store
+  expressions:
+    legacy: '{t}.STORE_NAME'
+    cloud: '{t}.store_name'
+- name: district
+  expressions:
+    legacy: '{t}.DISTRICT'
+    cloud: '{t}.district'
+- name: region
+  expressions:
+    legacy: '{t}.REGION'
+    cloud: '{t}.region'
+bindings:
+- platform: legacy
+  source: DWH.STORES
+  key: STORE_ID
+  preferred: false
+- platform: cloud
+  source: analytics.stores
+  key: store_id
+  status: active
+  review_note: reviewed 2026-10-03 by avery.lane
+provenance:
+  method: harvest
+  from: queries/core_analytics_pilot.oracle.sql
+  lines:
+  - 4
+  - 20
+  session: 2026-10-03-core-analytics
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'

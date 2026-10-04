@@ -1,0 +1,99 @@
+{
+  "distributions": [
+    {
+      "column": "ACCOUNT_STATUS",
+      "table": "DWH.CUSTOMER_MONTHLY",
+      "values": [
+        {
+          "share": 0.885,
+          "value": "A"
+        },
+        {
+          "share": 0.082,
+          "value": "C"
+        },
+        {
+          "share": 0.033,
+          "value": "P"
+        }
+      ]
+    },
+    {
+      "column": "IS_STAFF",
+      "table": "DWH.CUSTOMER_MONTHLY",
+      "values": [
+        {
+          "share": 0.98,
+          "value": 0
+        },
+        {
+          "share": 0.02,
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "join_cardinality": [
+    {
+      "cardinality": "many_to_one",
+      "right_alias": "s"
+    },
+    {
+      "cardinality": "many_to_one",
+      "right_alias": "c"
+    }
+  ],
+  "keys": [
+    {
+      "column": "HOME_STORE_ID",
+      "distinct": 12,
+      "rows": 8649,
+      "table": "DWH.CUSTOMER_MONTHLY",
+      "unique": false
+    },
+    {
+      "column": "STORE_ID",
+      "distinct": 12,
+      "rows": 12,
+      "table": "DWH.STORES",
+      "unique": true
+    },
+    {
+      "column": "CUSTOMER_ID",
+      "distinct": 800,
+      "rows": 8649,
+      "table": "DWH.CUSTOMER_MONTHLY",
+      "unique": false
+    },
+    {
+      "column": "CUSTOMER_ID",
+      "distinct": 800,
+      "rows": 800,
+      "table": "DWH.CUSTOMERS",
+      "unique": true
+    }
+  ],
+  "null_rates": [
+    {
+      "column": "HOME_STORE_ID",
+      "null_share": 0.0,
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "column": "STORE_ID",
+      "null_share": 0.0,
+      "table": "DWH.STORES"
+    },
+    {
+      "column": "CUSTOMER_ID",
+      "null_share": 0.0,
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "column": "CUSTOMER_ID",
+      "null_share": 0.0,
+      "table": "DWH.CUSTOMERS"
+    }
+  ],
+  "platform": "legacy"
+}

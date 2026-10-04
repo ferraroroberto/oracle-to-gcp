@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "entity.schema.json",
+  "title": "Entity — a population of things (one meaning per id)",
+  "allOf": [{"$ref": "_common.schema.json#/$defs/governance"}],
+  "required": ["bindings", "grain"],
+  "unevaluatedProperties": false,
+  "properties": {
+    "kind": {"const": "entity"},
+    "grain": {"type": "string"},
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [{"$ref": "_common.schema.json#/$defs/binding"}],
+        "required": ["key"]
+      }
+    },
+    "checks": {"type": "array", "items": {"$ref": "_common.schema.json#/$defs/check"}},
+    "anchors": {"type": "array", "items": {"$ref": "_common.schema.json#/$defs/id"}}
+  }
+}

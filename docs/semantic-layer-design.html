@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Semantic Layer Plan</title>
+<!-- Generated from docs/semantic-layer-design.md (the canonical source). Self-contained: no external requests. -->
+<style>
+:root { --bg:#f6f7f9; --surface:#fff; --fg:#1b2230; --muted:#5b6577; --rule:#dde2ea; --accent:#1f5fae; --code:#eef1f6; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#12161d; --surface:#1a2029; --fg:#e3e8f0; --muted:#9aa5b8; --rule:#2c3442; --accent:#7fb0ec; --code:#202733; color-scheme: dark; } }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; padding:0 16px; }
+main { max-width:820px; margin:0 auto; padding-block:24px 64px; }
+h1 { font-size:clamp(26px,5vw,34px); line-height:1.2; }
+h2 { font-size:22px; margin-top:44px; padding-top:16px; border-top:1px solid var(--rule); }
+h3 { font-size:17px; margin-top:28px; }
+p, li { max-width:70ch; }
+a { color:var(--accent); overflow-wrap:anywhere; }
+blockquote { margin:0 0 20px; padding:12px 16px; background:var(--surface); border:1px solid var(--rule); border-radius:8px; color:var(--muted); }
+code { font-family:ui-monospace, Consolas, monospace; font-size:.88em; background:var(--code); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code); border-radius:8px; padding:14px 16px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; font-size:13px; }
+.table-wrap { overflow-x:auto; margin:12px 0; }
+table { border-collapse:collapse; font-size:14px; width:100%; background:var(--surface); }
+th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--rule); }
+th { font-weight:600; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+</style>
+</head>
+<body><main>
+<h1>Team Semantic Layer + Data Agent — Design and Phased Plan</h1>
+<p><em>Durable design record for the <code>semantic_layer/</code> reference implementation in this repository. Section 14 maps every part of this plan to the code; <code>semantic_layer/README.md</code> is the operating manual and <code>semantic_layer/PORTING.md</code> the bootstrap guide for a real repository.</em></p>
+<blockquote>
+<p><strong>For the agent reading this:</strong> this is a self-contained design and implementation plan, written outside your environment. Merge it with what already exists in this repository (for example an existing repo of table and column metadata). Where the plan assumes something about the existing setup, <strong>check first and adapt</strong>. Every product capability marked <em>(verify)</em> is unconfirmed until tested here. Components are tagged <strong>[P1]</strong> (build now) or <strong>[P2]</strong> (designed now, built later). Phase 1 must still capture every field Phase 2 will read (section 3, principle 6).</p>
+</blockquote>
+<h2>1. What we are building</h2>
+<p>A <strong>git-hosted, team-owned semantic layer</strong>: business definitions stored as small YAML files with clear ownership, covering what a "customer" is, which table, which filter, who owns it, when it was last checked and which quality checks guard it. Around it sits a <strong>set of agent skills</strong> (GitHub Copilot or any agent that reads <code>SKILL.md</code> skills):</p>
+<ul>
+<li><strong>ask</strong> answers business questions. It resolves each term, asks when a term is ambiguous, prefers certified query templates, builds the SQL and a validation plan, and cites sources and owners.</li>
+<li><strong>find</strong> answers "where is X, who owns X, what changed".</li>
+<li><strong>harvest</strong> works backwards from SQL that already works. It parses the query and interviews its author to turn the knowledge hidden in it into definitions.</li>
+<li><strong>contribute</strong> guides a contributor through adding a definition by hand.</li>
+<li><strong>steward</strong> runs and triages the recurring maintenance checks.</li>
+</ul>
+<p>A generated <strong>navigator</strong> gives humans and agents the same view of who owns what.</p>
+<p>The definitions are the durable asset. The agent is their first consumer and can be replaced later.</p>
+<p>The data platform assumed here is generic: <strong>a legacy warehouse and a cloud warehouse, with tables being copied from one to the other during a migration</strong>. The examples use Oracle and BigQuery; substitute your own.</p>
+<h2>2. Why this shape: what the market has learned</h2>
+<ul>
+<li><strong>The model is rarely the bottleneck; missing business context is.</strong> On Spider 2.0 (real enterprise schemas, several SQL dialects) the best reasoning models fell from ~91% on the academic Spider 1.0 to ~21%. Most failures are at the schema level (wrong table, column or join), not SQL syntax. Vendors report large accuracy gains once a semantic layer grounds the agent. The consensus: <strong>semantic layer first, agent second</strong>.</li>
+<li><strong>Uber QueryGPT</strong> (≈1.2M queries/month; authoring time ~10 → ~3 min) replaced one big prompt with small steps: an <em>intent agent</em> routes to a business-domain "workspace", a <em>table agent</em> proposes tables and <strong>lets the user confirm</strong>, and a <em>column-prune agent</em> trims context. It is evaluated on intent accuracy, table overlap, execution success and similarity to golden SQL. Hallucinated tables never fully disappeared, so validation stays mandatory.</li>
+<li><strong>LinkedIn SQL Bot</strong> (arXiv 2507.14372) built a knowledge graph from metadata, <strong>historical query logs</strong>, wikis and code, and clustered tables per team. Its agent retrieves, ranks, writes, then <strong>self-corrects</strong>. Query <em>debugging</em> became one of its most valued features.</li>
+<li><strong>Verified queries.</strong> Snowflake Cortex Analyst lets a semantic model carry vetted question → SQL pairs that the agent prefers over writing new SQL. Our parameterised templates (section 5.5) apply the same idea.</li>
+<li><strong>Standards are converging but young:</strong></li>
+<li><strong>Open Semantic Interchange (OSI)</strong> is now <strong>Apache Ossie</strong> (Apache-2.0). It is a YAML spec with <code>datasets</code>, <code>fields</code> (per-dialect <code>expression</code>s), <code>relationships</code>, <code>metrics</code>, an <code>ai_context</code> block (<code>instructions</code>, <code>synonyms</code>, <code>examples</code>) and <code>custom_extensions</code>. Version <strong>0.2.0.dev0</strong>, still mutable.</li>
+<li><strong>Open Data Contract Standard (ODCS v3.1, Linux Foundation / Bitol)</strong> defines per-dataset contracts with predefined quality rules (<code>nullValues</code>, <code>missingValues</code>, <code>invalidValues</code>, <code>duplicateValues</code>, <code>rowCount</code>).</li>
+<li><strong>dbt MetricFlow</strong> (Apache-2.0 since Oct 2025) compiles metric requests to SQL deterministically. It is only relevant if the warehouse is dbt-modelled.</li>
+<li><strong>Cloud vendor tooling.</strong> BigQuery Conversational Analytics accepts business glossary terms (importable from Dataplex Universal Catalog). The open-source <strong>MCP Toolbox for Databases</strong> gives agents metadata and SQL tools. If adopted later, our repo should feed these tools rather than compete with them.</li>
+<li><strong>GitHub Copilot</strong> reads <strong>agent skills</strong> (<code>SKILL.md</code> folders) from <code>.github/skills/</code> (also <code>.claude/skills/</code>, <code>.agents/skills/</code>) in VS Code, Visual Studio, the CLI and the cloud agent. It also reads <strong>custom agents</strong> (<code>.github/agents/&lt;name&gt;.agent.md</code>) that pin tools and MCP servers. The <code>SKILL.md</code> format is shared with other agents, so the skills stay portable.</li>
+</ul>
+<h2>3. Design principles</h2>
+<ol>
+<li><strong>Definitions are the product.</strong> Invest there first; the agent is a consumer.</li>
+<li><strong>One meaning, one id.</strong> A business word with several meanings becomes several definitions sharing a synonym, never one definition with variants. Ambiguity detection follows directly: a term matching more than one certified id means the agent must ask.</li>
+<li><strong>Parse deterministically, interpret with the LLM.</strong> Table and join structure comes from a SQL parser and the catalog. The model handles meaning, questions and wording.</li>
+<li><strong>Certified first, generated second.</strong> A matching certified template beats newly written SQL. New SQL is always labelled as uncertified.</li>
+<li><strong>Answers must earn trust.</strong> Every answer carries provenance (definition, owner, version, health). Headline numbers reconcile against figures the organisation already trusts. "I don't know" beats a confident wrong number.</li>
+<li><strong>Phase 1 writes the full data, Phase 2 adds readers.</strong> The schema is complete from day one: bindings for both platforms, quality checks, review dates, harvest provenance, official anchors, template parameters. Phase 2 features only read data that already exists, so pausing after Phase 1 costs nothing and resuming needs no migration.</li>
+<li><strong>Generated views, one source.</strong> YAML is the only thing anyone edits. Index, docs, navigator and agent views are all build outputs.</li>
+<li><strong>Align with standards without adopting a 0.x spec.</strong> Use OSI field names where an equivalent exists and borrow ODCS quality-rule names; a converter can export later.</li>
+</ol>
+<h2>4. Architecture</h2>
+<pre><code>            ┌──────────────────────── semantic-layer repo (git) ─────────────────────────┐
+            │                                                                             │
+ existing   │  catalog/  (GENERATED, never hand-edited)    domains/&lt;team&gt;/  (CURATED)      │
+ metadata ──┼─▶ cloud/*.yaml  legacy/*.yaml              entities/ metrics/ dimensions/  │
+ repo       │   migration_map.yaml (legacy ⇄ cloud)        filters/ relationships/         │
+            │                                              templates/ anchors/             │
+            │  build/ (GENERATED: index, model.json,      evals/golden_questions.yaml      │
+            │          docs/*.md, navigator.html)                                          │
+            │  schema/*.json  sl/ (toolkit)  CODEOWNERS  .github/{skills,agents,workflows}   │
+            └──────────────┬──────────────────────────────────────┬───────────────────────┘
+                           │ read via the sl CLI                  │ PRs (owners approve)
+                ┌──────────▼─────────────────┐          ┌─────────▼──────────┐
+                │ Skills: ask · find ·        │          │ CI on every PR      │
+                │ harvest · contribute ·      │          │ schema · refs ·     │
+                │ steward                     │          │ bindings · evals    │
+                └──────────┬─────────────────┘          └────────────────────┘
+                           │ dry-run / metadata / (if permitted) execute
+                    ┌──────▼────────┐       ┌────────────────────────────────┐
+                    │ cloud DW       │       │ Scheduled checks               │
+                    │ legacy DW      │◀──────│ P1: drift + review expiry      │
+                    └───────────────┘       │ P2: freshness, quality, recon, │
+                                            │     template re-runs, evals    │
+                                            └────────────────────────────────┘
+</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Content</th>
+<th>Written by</th>
+<th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Physical catalog</strong></td>
+<td>Tables, columns, types, partitions on both platforms; legacy → cloud copy map</td>
+<td>Generator from the existing metadata repo</td>
+<td>Automatically</td>
+</tr>
+<tr>
+<td><strong>Semantic layer</strong></td>
+<td>Entities, metrics, dimensions, filters, relationships, templates, anchors</td>
+<td>Domain owners, via PR</td>
+<td>Slowly, reviewed</td>
+</tr>
+<tr>
+<td><strong>Agent layer</strong></td>
+<td>Skills, shared prompt fragments, eval set</td>
+<td>Core team</td>
+<td>Guarded by the eval set</td>
+</tr>
+</tbody>
+</table></div>
+<h2>5. The definition schema [P1, complete from day one]</h2>
+<p>One file per definition with a stable <code>id</code>. Kinds: <code>entity</code>, <code>metric</code>, <code>dimension</code>, <code>filter</code>, <code>relationship</code>, <code>template</code>, <code>anchor</code>. Field names follow OSI where an equivalent exists; governance fields are ours. Everything below is illustrative; table and column names are invented.</p>
+<h3>5.1 Entity</h3>
+<pre><code class="language-yaml">id: customer.active_buyer
+kind: entity
+name: Active customer (bought in the last 12 months)
+synonyms: [customer, client, active customer, buyer]
+description: &gt;
+  Person or company with at least one completed purchase in the 12 months
+  before the snapshot date.
+not_to_be_confused_with:
+  - id: customer.any_account
+    difference: every registered account, including ones that never bought
+  - id: customer.loyalty_member
+    difference: enrolled in the loyalty programme, regardless of purchases
+grain: one row per customer per month-end snapshot
+owner:
+  team: core-analytics          # matches the CODEOWNERS entry for this folder
+  steward: jane.doe             # the person to ask when it breaks
+status: certified               # draft | reviewed | certified | deprecated
+version: 3
+last_reviewed: 2026-09-15
+review_by: 2027-03-15           # scheduled check opens an issue when this passes
+bindings:
+  - platform: cloud
+    preferred: true
+    source: analytics.customer_monthly
+    key: customer_id
+    time_column: snapshot_date
+    filter: &quot;last_purchase_date &gt;= DATE_SUB(snapshot_date, INTERVAL 12 MONTH)&quot;
+  - platform: legacy
+    status: legacy              # valid until migration sign-off
+    source: DWH.CUSTOMER_MONTHLY
+    key: CUSTOMER_ID
+    time_column: SNAPSHOT_DATE
+    filter: &quot;LAST_PURCHASE_DATE &gt;= ADD_MONTHS(SNAPSHOT_DATE, -12)&quot;
+checks:                         # names borrowed from ODCS; read by P2 checks
+  - {type: nullValues, column: customer_id, must_be: 0}
+  - {type: duplicateValues, columns: [customer_id, snapshot_date], must_be: 0}
+  - {type: rowCount, per: snapshot_date, between: [MIN, MAX]}   # owner fills the band
+  - {type: freshness, column: snapshot_date, max_lag_days: 35}
+  - {type: reconcile, platforms: [cloud, legacy], measure: &quot;COUNT(DISTINCT key)&quot;, tolerance_pct: 0.1}
+anchors: [anchor.monthly_report.active_customers]
+provenance:                     # how it was learnt: harvest | capture | contribute
+  method: harvest
+  from: queries/pilot_customer_report.sql
+  lines: [12, 31]
+  confirmed_by: jane.doe
+  confirmed_on: 2026-10-03
+  open_questions: []
+ai_context:
+  instructions: &gt;
+    If the user says &quot;customer&quot; with no qualifier, ask which of the three
+    customer definitions they mean, showing each one's difference in one line.
+  examples: [&quot;how many customers do we have&quot;, &quot;active customers by region&quot;]
+</code></pre>
+<h3>5.2 Metric</h3>
+<pre><code class="language-yaml">id: metric.customer_count
+kind: metric
+name: Number of customers
+expression: &quot;COUNT(DISTINCT {entity.key})&quot;
+applies_to: [customer.active_buyer, customer.any_account, customer.loyalty_member]
+additivity: non_additive_over_time   # snapshot count: never SUM across months
+owner: {team: core-analytics, steward: jane.doe}
+status: certified
+version: 1
+last_reviewed: 2026-09-15
+review_by: 2027-03-15
+</code></pre>
+<h3>5.3 Dimension and relationship (where join knowledge lives)</h3>
+<pre><code class="language-yaml">id: dimension.home_store
+kind: dimension
+name: Home store
+synonyms: [store, shop, location, home store]
+not_to_be_confused_with:
+  - id: dimension.first_purchase_store
+    difference: store where the customer made their first purchase
+bindings:
+  - {platform: cloud, source: analytics.store, key: store_id, label_column: store_name}
+hierarchy: [store, district, region]   # enables &quot;by region&quot; roll-ups
+</code></pre>
+<pre><code class="language-yaml">id: rel.customer_monthly__home_store
+kind: relationship
+from: customer.active_buyer
+to: dimension.home_store
+join: &quot;{from}.home_store_id = {to}.store_id&quot;
+cardinality: many_to_one              # confirmed by harvest probe where available
+safe_for_metrics: [metric.customer_count]
+caveats: &quot;Snapshot table: join on the same snapshot_date or store moves are double counted.&quot;
+</code></pre>
+<p>Generated SQL may only use joins declared as relationships.</p>
+<h3>5.4 Anchor: a figure the organisation already trusts</h3>
+<pre><code class="language-yaml">id: anchor.monthly_report.active_customers
+kind: anchor
+name: Active customers, monthly management report
+published_in: &quot;Monthly management report, page 'Customer base'&quot;
+owner: {team: reporting, steward: john.roe}
+values:                               # appended monthly, by hand or by a loader
+  - {period: 2026-08, value: PUBLISHED_VALUE}   # the real published figure
+measures: {metric: metric.customer_count, entity: customer.active_buyer}
+tolerance_pct: 0.5
+</code></pre>
+<p>The ask skill reconciles matching answers against anchors ("matches the monthly report for 2026-08 within 0.2%"). In Phase 2 the scheduled checks do the same, so a moving official figure raises an alert.</p>
+<h3>5.5 Template: a parameterised verified query</h3>
+<pre><code class="language-yaml">id: tpl.customers_by_dimension_and_join_month
+kind: template
+question_pattern: &quot;{entity} customers in {region}, by {dimension} and month they joined&quot;
+parameters:
+  period_end: {type: period}        # the reference implementation supports period parameters
+  # value / one_of parameters (entity, region, dimension choice) are a natural extension
+uses: [customer.active_buyer@3, metric.customer_count@1, dimension.home_store@2, dimension.join_month@1]
+sql: {cloud: customers_by_dimension_and_join_month.cloud.sql}   # {{period_end}} placeholders
+expected:
+  executes: true
+  reconciles_with: anchor.monthly_report.active_customers
+verified_by: jane.doe
+verified_on: 2026-10-03
+expires: 2027-04-03
+</code></pre>
+<p>The <code>@version</code> pins make staleness mechanical. When a used definition changes version, CI marks the template <strong>needs re-verification</strong> and the agent stops treating it as certified until someone re-signs it. Templates are demoted when they go stale, never deleted.</p>
+<h3>5.6 Status lifecycle</h3>
+<p><code>draft</code> → <code>reviewed</code> (a second person checked it) → <code>certified</code> (owner signed, checks pass) → <code>deprecated</code> (kept, with <code>replaced_by</code>). The agent may use <code>draft</code>/<code>reviewed</code> items only with an explicit <strong>uncertified</strong> warning.</p>
+<h2>6. Ownership and contribution [P1]</h2>
+<ul>
+<li><strong>One folder per owning team</strong> under <code>domains/</code>, with a <code>CODEOWNERS</code> line per folder, so GitHub requires that team's approval for changes. Shared dimensions (time, geography) live in <code>shared/</code> with a named owner.</li>
+<li><strong>Inner source:</strong> anyone may open a PR anywhere; only owners approve.</li>
+<li><strong>PR template checklist:</strong> unique id; owner and steward; a binding that resolves in the catalog; at least one check; <code>review_by</code>; <code>not_to_be_confused_with</code> where synonyms overlap; a golden question for a new concept.</li>
+<li><strong>History is git.</strong> Who added what and why lives in commit and PR history; the find skill reads <code>git log</code> to answer "what changed?".</li>
+</ul>
+<h2>7. The skills</h2>
+<p>Skills live in <code>.github/skills/</code>, each a <code>SKILL.md</code> with a sharp <code>description</code> for routing. Shared steps (loading the index, citation format, uncertified warning, capture offer) live in one <code>_shared/</code> file referenced by every skill. An optional <code>data-analyst.agent.md</code> custom agent pins the tools. All skills read the layer through the <code>sl</code> CLI (section 9).</p>
+<h3>7.1 <code>semantic-harvest</code> — work backwards from working SQL [P1 single query · P2 bulk]</h3>
+<p>This skill is the main way content enters the layer. Start from SQL people already trust, not from a blank "what is a customer?" interview.</p>
+<ol>
+<li><strong>Static parse</strong> [P1] with <a href="https://github.com/tobymao/sqlglot"><code>sqlglot</code></a> (open-source Python parser; supports the <code>oracle</code> and <code>bigquery</code> dialects among many; plus column lineage). <code>sl harvest analyse &lt;file&gt; --platform &lt;p&gt; --session &lt;id&gt;</code> emits JSON with:</li>
+<li>tables, aliases and CTEs, with each CTE's grain;</li>
+<li>joins: both sides, keys, join type (<code>LEFT</code> vs <code>INNER</code> says whether the right side is optional);</li>
+<li>filters, with <strong>literal values</strong> separated out (<code>STATUS = 'A'</code>, <code>TYPE IN (3, 7)</code>, date windows);</li>
+<li>aggregations and <code>GROUP BY</code> columns (candidate metrics and dimensions);</li>
+<li>output columns with lineage back to source columns.</li>
+<li><strong>Cross-reference</strong> [P1] against <code>catalog/</code> (does the table exist, on which platform, is there a cloud copy of this legacy table) and against existing definitions:</li>
+<li>an expression matching a certified definition → reuse it, no question needed;</li>
+<li>a filter on the same table that <strong>differs</strong> from a certified definition → ask <em>"Your query counts customers with <code>STATUS IN ('A','P')</code>; the certified <code>customer.active_buyer</code> uses <code>STATUS = 'A'</code>. A different concept, or should it use the certified one?"</em> The answer is either a new definition or a bug in the query.</li>
+<li><strong>Probes</strong> [P1 if execution is permitted, else P2] — aggregate-only, never rows:</li>
+<li>distinct values with counts for each filtered code column, so the interview shows <code>'A' 81%, 'P' 6%, 'B' 13%</code> instead of asking blind;</li>
+<li>join cardinality: key uniqueness per side and row counts before/after each join;</li>
+<li>null rates on join keys.</li>
+<li><strong>Interview</strong> [P1] in batches of 3–5 questions, highest value first. Where possible <strong>propose a guess and ask for confirmation</strong>. Question bank:</li>
+<li>What business question does this answer, and who uses the result? (→ template <code>question_pattern</code>, golden question)</li>
+<li>For each filter literal: what does the value mean, and why is it included or excluded? <em>(Undocumented knowledge sits in these values.)</em></li>
+<li>For each CTE or subquery: is this a named business concept? (→ entity or filter)</li>
+<li>For each join: why <code>LEFT</code> and not <code>INNER</code>? What does a missing right side mean?</li>
+<li>What is one row of the output? (→ grain)</li>
+<li>Which published figure should this match? (→ anchor)</li>
+<li>What breaks this query, or what have people got wrong before? (→ <code>caveats</code>)</li>
+<li>Who owns each source table? (→ owner, steward)</li>
+<li>Which parts would people want to change? (→ template parameters)</li>
+<li><strong>Output as a PR</strong> [P1], everything <code>status: draft</code>, each item carrying its <code>provenance:</code> block (<code>method: harvest</code>). Contents: entities, dimensions, filters, metrics; one relationship per confirmed join; the original query as a <strong>template</strong> with its known-good result in <code>expected</code>; one or more anchors; golden questions; and the open questions for the reviewer.</li>
+<li><strong>Bulk mode</strong> [P2]: run step 1 over folders of scripts, or over query history if accessible (BigQuery: <code>INFORMATION_SCHEMA.JOBS_BY_PROJECT</code> holds executed query text, <em>verify</em> permission and retention). Aggregate:</li>
+<li>most-used tables, and catalog tables nobody queries;</li>
+<li>most frequent join pairs and keys → <strong>candidate relationships ranked by usage</strong>;</li>
+<li>recurring filter literals per table → candidate filters and entity variants;</li>
+<li><strong>disagreement report</strong>: queries computing the same concept with different filters, and how far their results differ.</li>
+</ol>
+<h3>7.2 <code>semantic-ask</code> — business question to answer [P1 core · P2 execution and checks]</h3>
+<ol>
+<li><strong>Parse into an analysis spec</strong>: measures, population, dimensions, filters, time grain and range. Echo it back briefly.</li>
+<li><strong>Resolve terms</strong> with <code>sl search</code> over names, synonyms and descriptions. One certified match → use it. Several → <strong>ask</strong>, listing each candidate's one-line difference and owner, all ambiguities in one multiple-choice message. None → say so, offer an uncertified fallback from the raw catalog, and offer to start a harvest or contribute draft.</li>
+<li><strong>Template first.</strong> If a certified template matches the resolved spec, fill its parameters and use it. This gives the fastest and most reliable path.</li>
+<li><strong>Otherwise plan</strong>: platform (<code>preferred</code> binding unless only legacy has it); join path <strong>only from declared relationships</strong>; grain and fan-out check; additivity check (no summing snapshot counts).</li>
+<li><strong>Generate SQL from certified fragments</strong> (binding <code>source</code>/<code>filter</code>/<code>key</code>, metric <code>expression</code>), with comments citing each definition id and version. Label the result <strong>new SQL, uncertified</strong>.</li>
+<li><strong>Validate:</strong></li>
+<li>[P1] syntax and cost: BigQuery dry run (<code>bq query --dry_run --use_legacy_sql=false</code>) validates and estimates bytes; Oracle <code>EXPLAIN PLAN FOR …</code>;</li>
+<li>[P1] lint: every certified filter of the cited definitions appears; no undeclared joins; partition filter present; no <code>SELECT *</code>;</li>
+<li>[P1 if execution is permitted, else P2] run aggregate results, reconcile with anchors, check for null keys in breakdowns and plausible row counts;</li>
+<li>self-correct once or twice, then report the failure instead of looping.</li>
+<li><strong>Answer</strong> with: the SQL (or the result table, if executed); a <strong>provenance card</strong> (each definition → owner, steward, status, version, last reviewed, health, link to its docs page); the anchor reconciliation line where one applies; a short <strong>manual validation plan</strong> (2–4 concrete spot checks); caveats (uncertified items, legacy bindings, freshness).</li>
+<li><strong>Capture in the session</strong> [P1]. When the user resolves an ambiguity the layer did not cover, corrects the SQL, or says a result is wrong, offer: <em>"Save this as a draft definition for your team?"</em> / <em>"Open an issue for the owner of X?"</em> Accepted offers become a branch and PR (draft status) or an issue assigned to the steward. This is how the layer grows from normal use.</li>
+</ol>
+<p><strong>Worked example.</strong> <em>"Total customers in the region, by store and month they joined"</em> holds three ambiguities: <strong>customer</strong> (active buyer / any account / loyalty member), <strong>store</strong> (home store / first-purchase store), <strong>month they joined</strong> (account created / first purchase). A good first reply asks all three at once, as multiple choice.</p>
+<h3>7.3 <code>semantic-find</code> — where is X, who owns X, what changed [P1]</h3>
+<p>Lookups without SQL: the definition, its bindings on each platform, its legacy → cloud copy status, owner and steward, health, templates and anchors that use it, and <code>git log</code> for "what changed and when". It always names the steward.</p>
+<h3>7.4 <code>semantic-contribute</code> — add a definition by hand [P1, light]</h3>
+<p>An interview over the schema fields for concepts no query shows. It proposes bindings from <code>catalog/</code>, suggests checks, drafts <code>not_to_be_confused_with</code> notes for overlapping synonyms, adds a golden question and opens a PR. It never sets <code>certified</code>.</p>
+<h3>7.5 <code>semantic-steward</code> — maintenance [P1 minimal · P2 full]</h3>
+<p>A scheduled deterministic job (section 8) does the checking; the skill reads its report, groups failures by owner, explains likely causes (renamed column, late load, migration cut-over) and drafts the fix PR or issue text.</p>
+<h3>7.6 Retrieval: start simple [P1]</h3>
+<p>Up to roughly a thousand definitions, a compact generated index (id, kind, name, synonyms, one-line description, owner, status per line) can be loaded whole, followed by reading only the selected files. Partition by domain when it grows. Add embedding search [P2] only when the index stops fitting or the eval set shows synonym misses. The threshold is a rule of thumb; check it against the evals.</p>
+<h2>8. Validation and scheduled checks</h2>
+<h3>8.1 CI on every PR [P1] — deterministic, no LLM</h3>
+<p><code>sl validate</code> fails the PR when:
+1. a file does not match its JSON Schema (<code>schema/&lt;kind&gt;.json</code>);
+2. an <code>id</code> is duplicated, or a reference (<code>applies_to</code>, <code>from</code>, <code>to</code>, <code>uses</code>, <code>anchors</code>, <code>replaced_by</code>) points nowhere;
+3. a binding's table or column is missing from the catalog snapshot;
+4. a certified item lacks owner, steward, checks or <code>review_by</code>;
+5. two certified definitions share a synonym without a <code>not_to_be_confused_with</code> link;
+6. a template pins an older version than current (warn, mark for re-verification).</p>
+<p>Then <code>sl build</code> regenerates <code>build/</code> and the eval set runs (section 10).</p>
+<h3>8.2 Scheduled checks</h3>
+<p>Run as a scheduled job, on a self-hosted runner or a cloud scheduler, wherever there is read access to the databases.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>How</th>
+<th>Phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Schema drift</td>
+<td>Compare bindings to live metadata (BigQuery <code>INFORMATION_SCHEMA.COLUMNS</code>, Oracle <code>ALL_TAB_COLUMNS</code>)</td>
+<td><strong>P1</strong></td>
+</tr>
+<tr>
+<td>Review expiry</td>
+<td><code>review_by</code> / <code>expires</code> in the past → issue to steward</td>
+<td><strong>P1</strong></td>
+</tr>
+<tr>
+<td>Catalog refresh</td>
+<td>Regenerate <code>catalog/</code>, diff, PR</td>
+<td><strong>P1</strong></td>
+</tr>
+<tr>
+<td>Freshness</td>
+<td><code>max(time_column)</code> vs <code>max_lag_days</code></td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Quality checks</td>
+<td>Each definition's <code>checks</code>, aggregate-only</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Legacy ⇄ cloud reconciliation</td>
+<td>Same aggregate on both bindings</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Anchor reconciliation</td>
+<td>Template results vs published figures</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Template re-runs</td>
+<td>Execute, test <code>expected</code>, demote on failure</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Agent evals</td>
+<td>Golden question set</td>
+<td>P2 (P1 runs in CI)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Outputs: one grouped issue per owner per run and <code>build/health.json</code> for the navigator and the agent. Checks return <strong>aggregates only</strong>, so no row-level data reaches reports, issues or prompts.</p>
+<h2>9. Navigator and agent access: one build, two audiences</h2>
+<pre><code>domains/**/*.yaml + catalog/ + health.json
+              │
+         sl build         (CI on every merge, and after each scheduled run)
+              │
+   ┌──────────┼──────────────────┬───────────────────────┐
+   ▼          ▼                  ▼                       ▼
+model.json   index              docs/*.md               navigator.html
+(agents)     (agent context)    (GitHub browsing) [P1]  (static, searchable) [P2]
+</code></pre>
+<ul>
+<li><strong><code>build/model.json</code></strong> [P1]: the whole layer with references resolved both ways (uses / used by), owner, status, health, catalog facts.</li>
+<li><strong>the <code>sl</code> CLI</strong> (<code>python -m semantic_layer</code>) [P1]: one CLI over the layer for people and agents alike (<code>sl search</code>, <code>sl show &lt;id&gt;</code>, <code>sl owners --team &lt;t&gt;</code>, <code>sl table &lt;name&gt;</code>, <code>sl lineage &lt;id&gt;</code>, <code>sl health --overdue</code>). Skills call it instead of walking files.</li>
+<li><strong>Generated markdown docs</strong> [P1]: one page per team, per definition and per table, plus a Mermaid relationship diagram per domain, which GitHub renders natively. This needs no infrastructure and is enough for Phase 1.</li>
+<li><strong><code>navigator.html</code></strong> [P2]: one self-contained static file with <code>model.json</code> embedded and client-side search, with views for teams, concepts, tables, relationships, and health and coverage. It needs no server or database. Host it as a CI artifact, on private GitHub Pages <em>(verify)</em>, or behind the organisation's login.</li>
+<li><strong>MCP server</strong> [P2, only if needed]: wraps the same <code>sl</code> functions for clients that cannot run a CLI.</li>
+<li><strong>Do not build a web app with its own database.</strong> If the organisation already runs a data catalog (Dataplex, DataHub, OpenMetadata, Collibra), export into it instead; DataHub, for example, already ingests ODCS contracts.</li>
+</ul>
+<p>A few thousand definitions make a <code>model.json</code> of a few megabytes, which a static page searches comfortably.</p>
+<h2>10. Evaluation and success metrics</h2>
+<p><code>evals/golden_questions.yaml</code> holds real questions collected from users before and during the pilot:</p>
+<pre><code class="language-yaml">- question: &quot;active customers by home store at the end of August&quot;
+  expect_definitions: [customer.active_buyer, metric.customer_count, dimension.home_store]
+  expect_template: tpl.customers_by_dimension_and_join_month
+  expect_clarification: false
+  expect_result: {reconciles_with: anchor.monthly_report.active_customers}
+- question: &quot;how many customers per store&quot;
+  expect_clarification: true          # must ask: which customer, which store
+</code></pre>
+<p><strong>Agent metrics</strong> (CI, on every PR touching definitions or skills; a drop blocks the merge): resolution accuracy, clarification precision and recall, template hit rate, execution success, result match.</p>
+<p><strong>Adoption metrics</strong> (the pilot's scorecard):
+- <strong>Baseline before launch</strong>: ad-hoc data requests per week and average time to answer, for each pilot team.
+- Weekly active users of the skills.
+- Time from question to validated answer.
+- <strong>Definitions and templates contributed by people outside the core team without being asked.</strong> This is the real stickiness signal: usage can be curiosity, unprompted contribution is adoption.
+- Complaints fixed, and days from complaint to fix.</p>
+<h2>11. Phase 1 — the quick win that sticks</h2>
+<p><strong>Goal:</strong> two teams answering real questions from a small certified layer that grew out of their own working queries, with numbers that reconcile to published figures and a feedback loop that keeps growing the layer. <strong>Scope:</strong> the core team first, then one more team. Each team brings <strong>one working query</strong> it built and validated recently. That query is harvested in an interview session, and everything else grows from there.</p>
+<h3>Step 1 — Discovery (days, not weeks)</h3>
+<ul>
+<li>Inspect the existing metadata repo: format, generation, frequency, coverage of both platforms, any legacy ⇄ cloud mapping.</li>
+<li>Establish what the agent can reach in this environment: dry run, query execution, metadata reads, permitted MCP servers <em>(verify each)</em>. This decides which [P1-if-permitted] items are in.</li>
+<li>Settle <strong>who the users are</strong>. If they are analysts who write SQL in an IDE, Copilot skills are the right front end. If they are business users, the pilot users are the analysts who serve them, and a business-facing front end is a Phase 2 question.</li>
+<li>Record the adoption baseline for both teams.</li>
+<li>Start the request for read access from a scheduled job now; approvals are usually the slowest step.</li>
+</ul>
+<h3>Step 2 — Skeleton</h3>
+<ul>
+<li>Repo layout; JSON Schemas for <strong>all</strong> kinds (complete, per principle 6); <code>sl validate</code>; <code>sl build</code> (index, <code>model.json</code>, markdown docs); the <code>sl</code> lookups; catalog generator; CODEOWNERS; PR template; golden question file.</li>
+</ul>
+<h3>Step 3 — Core team: harvest the pilot query</h3>
+<ul>
+<li><code>harvest_parse.py</code> and the <code>semantic-harvest</code> skill (steps 1–5).</li>
+<li>One interview session (60–90 min) with the query's authors. Expected yield: 5–15 definitions, the relationships behind every join, the query as a certified template, at least one anchor, 5–10 golden questions.</li>
+<li>Owners review and certify via PR.</li>
+</ul>
+<h3>Step 4 — Core team: use it daily</h3>
+<ul>
+<li><code>semantic-find</code> and <code>semantic-ask</code> with: template-first matching, the provenance card, anchor reconciliation, the uncertified warning, and <strong>in-session capture</strong>.</li>
+<li>The core team routes its own ad-hoc questions through the skill for 2–3 weeks. Every gap becomes a captured draft or a new harvest. Iterate on the golden set.</li>
+<li>Minimal scheduled checks: schema drift, review expiry, catalog refresh.</li>
+</ul>
+<h3>Step 5 — Second team</h3>
+<ul>
+<li>The second team harvests its own working query <strong>using only the docs and the harvest skill</strong>, with the core team watching but not driving. Whatever confuses them gets fixed.</li>
+<li><strong>Two-team disagreement check</strong>: wherever the two teams' queries compute the same concept, compare filters and results. Any difference found becomes either a new distinct definition or a correction, and is the pilot's strongest result to show stakeholders.</li>
+</ul>
+<h3>Exit criteria (agree targets up front)</h3>
+<ul>
+<li>Golden-set resolution accuracy and clarification behaviour at the agreed bar.</li>
+<li>Both teams using it weekly; measured time-to-answer gain against the baseline.</li>
+<li>At least one definition or template contributed by the second team without being asked.</li>
+<li>Every headline number in the pilot reconciles with an anchor.</li>
+</ul>
+<h3>Deliberately not in Phase 1</h3>
+<p>Navigator HTML, MCP server, embedding search, bulk harvest over query history, the full check suite, standards export, more teams.</p>
+<h2>12. Phase 2 — build later, from data that already exists</h2>
+<p>Each module below reads data that Phase 1 already captures, so any of them can start, pause or be skipped independently with no schema migration. Each lists its trigger.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Reads (already captured in P1)</th>
+<th>Start when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bulk harvest + usage ranking</strong></td>
+<td>Query folders / query history; catalog</td>
+<td>A third team joins, or you need to prioritise what to define next</td>
+</tr>
+<tr>
+<td><strong>Full disagreement report</strong></td>
+<td>Bulk harvest output; definitions</td>
+<td>You need the case for org-wide ownership</td>
+</tr>
+<tr>
+<td><strong>Full scheduled checks</strong> (freshness, quality, legacy ⇄ cloud reconciliation, template re-runs, anchor checks)</td>
+<td><code>checks</code>, bindings on both platforms, templates' <code>expected</code>, anchors</td>
+<td>The layer holds enough certified items that silent breakage becomes likely</td>
+</tr>
+<tr>
+<td><strong>Agent executes queries</strong></td>
+<td>Bindings, anchors</td>
+<td>Execution permission is granted</td>
+</tr>
+<tr>
+<td><strong>Navigator HTML + health dashboard</strong></td>
+<td><code>model.json</code>, <code>health.json</code></td>
+<td>More than one or two teams browse the layer</td>
+</tr>
+<tr>
+<td><strong>Embedding search</strong></td>
+<td>Index</td>
+<td>Index no longer fits, or evals show synonym misses</td>
+</tr>
+<tr>
+<td><strong>MCP server</strong></td>
+<td>the <code>sl</code> functions</td>
+<td>A client cannot run the CLI</td>
+</tr>
+<tr>
+<td><strong>Business-user front end</strong></td>
+<td>The same skills and <code>model.json</code></td>
+<td>Phase 1 shows analysts trust it and business users ask for direct access</td>
+</tr>
+<tr>
+<td><strong>Standards export / catalog sync</strong> (OSI/Ossie, ODCS, Dataplex, DataHub)</td>
+<td>Definitions (OSI-aligned names)</td>
+<td>Another tool needs to consume the definitions</td>
+</tr>
+<tr>
+<td><strong>Deterministic metric compiler</strong></td>
+<td>Metrics, relationships</td>
+<td>Evals show recurring join or grain errors that templates do not cover</td>
+</tr>
+<tr>
+<td><strong>Org-wide rollout</strong></td>
+<td>Everything above</td>
+<td>Phase 1 exit criteria met</td>
+</tr>
+</tbody>
+</table></div>
+<h2>13. Risks and trade-offs</h2>
+<ul>
+<li><strong>People, not code, decide whether this lasts.</strong> Definitions rot without owners who have a reason to keep them current. Countermeasures: review dates, issues assigned by name, visible health, a sponsor who makes ownership part of the job (for example 30 minutes a week on the weekly issue), and quick, visible fixes for every complaint.</li>
+<li><strong>One wrong number can end the pilot.</strong> Hence template-first answers, anchor reconciliation, provenance on every answer, and uncertified warnings.</li>
+<li><strong>LLM-written SQL vs a deterministic compiler.</strong> Templates plus certified fragments plus lint give most of the reliability with no new infrastructure. A compiler is a Phase 2 option.</li>
+<li><strong>Standards churn.</strong> OSI/Ossie is pre-1.0; align names, do not adopt it as storage.</li>
+<li><strong>Access and governance.</strong> Scheduled read access and agent execution are separate approvals; use the sanctioned route (service account, scheduled job inside the cloud project), never a personal machine.</li>
+<li><strong>Data protection.</strong> The agent sees metadata, SQL and aggregates. Rows and personal data never enter prompts, issues or reports.</li>
+<li><strong>Migration.</strong> Two bindings per definition while tables move; reconciliation catches divergence; mark the legacy binding <code>deprecated</code> after sign-off rather than deleting it.</li>
+</ul>
+<h2>14. Reference implementation in this repository</h2>
+<p><code>semantic_layer/</code> implements Phase 1 fully and the Phase 2 modules marked below, on mock data (a fictitious retail domain in two DuckDB files standing in for the legacy and cloud warehouses). Command names are <code>python -m semantic_layer &lt;command&gt;</code>, shortened to <code>sl</code> here.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Plan section</th>
+<th>Implementation</th>
+<th>Phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4 Architecture: physical catalog</td>
+<td><code>sl catalog generate</code> → <code>catalog/</code> (<code>sl/catalog.py</code>; <code>collect()</code> is the porting seam)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>4 Platforms (legacy / cloud)</td>
+<td><code>sl/platforms.py</code>: <code>MockDuckDBPlatform</code> (sqlglot transpile), <code>BigQueryPlatform</code>, <code>OraclePlatform</code> behind one protocol; <code>config.json</code> selects</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>5 Definition schema</td>
+<td><code>schema/*.schema.json</code> (all seven kinds, complete from day one), loaded by <code>sl/model.py</code></td>
+<td>P1</td>
+</tr>
+<tr>
+<td>6 Ownership</td>
+<td><code>domains/&lt;team&gt;/</code> + <code>CODEOWNERS.example</code>; validate warns when <code>owner.team</code> ≠ folder</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7.1 Harvest (single query)</td>
+<td><code>sl harvest analyse</code> / <code>sl harvest draft</code> (<code>sl/harvest.py</code>); two recorded mock sessions under <code>harvest/sessions/</code></td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7.1.6 Bulk harvest</td>
+<td><code>sl harvest bulk --history \| --folder</code> (<code>sl/phase2/bulk.py</code>); mock <code>ops.query_history</code></td>
+<td>P2</td>
+</tr>
+<tr>
+<td>7.2 Ask</td>
+<td><code>sl ask resolve</code> / <code>sl ask run</code> (<code>sl/ask.py</code>): template-first, compose, lint, dry run, execute, anchor reconcile, provenance card, validation plan</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7.2.8 Capture</td>
+<td><code>sl capture definition</code> / <code>sl capture issue</code> (<code>sl/capture.py</code>)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7.3 Find</td>
+<td><code>sl search · show · owners · table · lineage · health</code> (<code>sl/find.py</code>)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7.4 Contribute</td>
+<td><code>.github/skills/semantic-contribute/</code> over the schemas + <code>sl validate</code></td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7.5 Steward</td>
+<td><code>.github/skills/semantic-steward/</code> over <code>sl checks run</code></td>
+<td>P1</td>
+</tr>
+<tr>
+<td>8.1 CI</td>
+<td><code>sl validate</code> (<code>sl/validate.py</code>) + <code>sl build --check</code> + <code>sl eval</code>; <code>.github/workflows/semantic-layer.yml</code>; <code>scripts/verify-before-ship.ps1</code></td>
+<td>P1</td>
+</tr>
+<tr>
+<td>8.2 Scheduled checks (drift, expiry, catalog refresh)</td>
+<td><code>sl checks run</code> (<code>sl/checks.py</code>) → <code>build/health.json</code>, <code>build/issues/&lt;team&gt;.md</code>; exit 3 = unknown</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>8.2 Full checks</td>
+<td><code>sl checks run --full</code> (<code>sl/phase2/checks_full.py</code>)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>9 Model + docs</td>
+<td><code>sl build</code> (<code>sl/build.py</code>) → <code>build/index.jsonl</code>, <code>build/model.json</code>, <code>build/docs/</code></td>
+<td>P1</td>
+</tr>
+<tr>
+<td>9 Navigator</td>
+<td><code>sl build --navigator</code> (<code>sl/phase2/navigator.py</code>)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>10 Evaluation</td>
+<td><code>evals/golden_questions.yaml</code> (15 questions) + <code>sl eval</code> (<code>sl/evals.py</code>)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>11 Step 5 Two-team disagreement</td>
+<td><code>sl disagree</code> (<code>sl/disagree.py</code>): mock result 446 vs 398</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>12 Full disagreement</td>
+<td><code>sl disagree --all</code></td>
+<td>P2</td>
+</tr>
+<tr>
+<td>12 Standards export</td>
+<td><code>sl export osi</code> (<code>sl/phase2/export_osi.py</code>, experimental)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>12 MCP server, embeddings, business front end, deterministic compiler</td>
+<td>not built; each documented with its trigger</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>Decisions taken while building it, and why:</p>
+<ul>
+<li><strong>Provenance is one block with a <code>method</code></strong> (<code>harvest | capture | contribute</code>) rather than a <code>harvest:</code> block. All three ways a definition is learnt need the same fields.</li>
+<li><strong>Cross-platform bindings from a harvest are <em>proposals</em></strong>: transpiled with sqlglot, mapped through the migration map, dry-run, and marked <code>status: proposed</code> with a review note. In the mock, sqlglot kept <code>ADD_MONTHS</code> (not a BigQuery function), compared a BOOLEAN to <code>0</code>, and produced invalid Oracle from <code>DATE_SUB</code>. DuckDB accepted all three. The committed reviews fixed them by hand, which is why a person reviews every cross-platform binding.</li>
+<li><strong>Health is a separate state, never a YAML rewrite.</strong> Checks write <code>build/health.json</code> (<code>ok · warning · failing · unknown</code>). A stale or failing template is <em>demoted</em> there, and the agent stops treating it as certified, but no check edits curated definitions.</li>
+<li><strong><code>unknown</code> has its own exit code (3)</strong> so a scheduler cannot mistake "could not check" for "healthy".</li>
+<li><strong>Template parameters:</strong> only <code>period</code> parameters are implemented. Value and choice parameters are a straightforward extension of <code>match_template</code> in <code>sl/ask.py</code>.</li>
+<li><strong>Disagreement counts are taken at one period per platform</strong>, and variants that differ only in literal values (<code>region = 'North'</code> vs <code>'South'</code>) are treated as parameters, not disagreements.</li>
+</ul>
+<h2>15. Sources</h2>
+<ul>
+<li>Uber QueryGPT: https://www.uber.com/blog/query-gpt</li>
+<li>LinkedIn, <em>Text-to-SQL for Enterprise Data Analytics</em> (arXiv 2507.14372): https://arxiv.org/abs/2507.14372</li>
+<li>Open Semantic Interchange / Apache Ossie spec: https://github.com/open-semantic-interchange/OSI</li>
+<li>OSI announcement: https://www.snowflake.com/en/blog/open-semantic-interchanges-specs-finalized/</li>
+<li>ODCS v3.1.0: https://bitol.io/bitol-announces-odcs-v3-1-0-stronger-smarter-and-stricter/</li>
+<li>sqlglot (parser, dialects, lineage): https://github.com/tobymao/sqlglot</li>
+<li>DataHub ODCS ingestion: https://docs.datahub.com/docs/generated/ingestion/sources/odcs</li>
+<li>MetricFlow open-sourced (Apache 2.0): https://www.getdbt.com/blog/open-source-metricflow-governed-metrics</li>
+<li>BigQuery conversational analytics: https://docs.cloud.google.com/bigquery/docs/conversational-analytics</li>
+<li>BigQuery tools for ADK and MCP: https://cloud.google.com/blog/products/ai-machine-learning/bigquery-meets-google-adk-and-mcp</li>
+<li>Copilot agent skills: https://learn.microsoft.com/visualstudio/ide/copilot-agent-skills</li>
+<li>Copilot custom agents: https://docs.github.com/copilot/concepts/agents/coding-agent/about-custom-agents</li>
+<li>Enterprise text-to-SQL and semantic layers: https://atlan.com/know/ai-agent/data-for-ai/text-to-sql-for-enterprise/</li>
+</ul>
+</main></body>
+</html>

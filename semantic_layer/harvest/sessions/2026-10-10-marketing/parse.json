@@ -1,0 +1,143 @@
+{
+  "aggregates": [
+    {
+      "distinct": true,
+      "expression": "COUNT(DISTINCT cm.customer_id)",
+      "function": "COUNT",
+      "name": "reachable_customers",
+      "sources": [
+        "analytics.customer_monthly.customer_id"
+      ]
+    }
+  ],
+  "ctes": [],
+  "dialect": "bigquery",
+  "filters": [
+    {
+      "alias": "cm",
+      "canonical": "snapshot_date = CAST('2026-08-31' AS DATE)",
+      "columns": [
+        "snapshot_date"
+      ],
+      "literals": [
+        "2026-08-31"
+      ],
+      "predicate": "cm.snapshot_date = CAST('2026-08-31' AS DATE)",
+      "scope": "main",
+      "table": "analytics.customer_monthly"
+    },
+    {
+      "alias": "cm",
+      "canonical": "last_purchase_date >= snapshot_date - INTERVAL '6' MONTH",
+      "columns": [
+        "last_purchase_date",
+        "snapshot_date"
+      ],
+      "literals": [
+        "6"
+      ],
+      "predicate": "cm.last_purchase_date >= DATE_SUB(cm.snapshot_date, INTERVAL '6' MONTH)",
+      "scope": "main",
+      "table": "analytics.customer_monthly"
+    }
+  ],
+  "group_by": [
+    "s.region"
+  ],
+  "joins": [
+    {
+      "condition": "s.store_id = cm.home_store_id",
+      "inferred_cardinality": "many_to_one",
+      "keys": [
+        {
+          "left": "home_store_id",
+          "left_alias": "cm",
+          "left_source": [
+            "analytics.customer_monthly.home_store_id"
+          ],
+          "right": "store_id",
+          "right_alias": "s",
+          "right_source": [
+            "analytics.stores.store_id"
+          ]
+        }
+      ],
+      "left_alias": "cm",
+      "left_table": "analytics.customer_monthly",
+      "right_alias": "s",
+      "right_table": "analytics.stores",
+      "scope": "main",
+      "type": "inner"
+    },
+    {
+      "condition": "lm.customer_id = cm.customer_id",
+      "inferred_cardinality": "many_to_one",
+      "keys": [
+        {
+          "left": "customer_id",
+          "left_alias": "cm",
+          "left_source": [
+            "analytics.customer_monthly.customer_id"
+          ],
+          "right": "customer_id",
+          "right_alias": "lm",
+          "right_source": [
+            "analytics.loyalty_members.customer_id"
+          ]
+        }
+      ],
+      "left_alias": "cm",
+      "left_table": "analytics.customer_monthly",
+      "right_alias": "lm",
+      "right_table": "analytics.loyalty_members",
+      "scope": "main",
+      "type": "left"
+    }
+  ],
+  "lines": [
+    3,
+    11
+  ],
+  "outputs": [
+    {
+      "expression": "s.region",
+      "name": "region",
+      "sources": [
+        "analytics.stores.region"
+      ]
+    },
+    {
+      "expression": "COUNT(DISTINCT cm.customer_id)",
+      "name": "reachable_customers",
+      "sources": [
+        "analytics.customer_monthly.customer_id"
+      ]
+    }
+  ],
+  "query": "queries/marketing_pilot.bigquery.sql",
+  "statements": 1,
+  "tables": [
+    {
+      "alias": "cm",
+      "scope": "main",
+      "table": "analytics.customer_monthly"
+    },
+    {
+      "alias": "s",
+      "scope": "main",
+      "table": "analytics.stores"
+    },
+    {
+      "alias": "lm",
+      "scope": "main",
+      "table": "analytics.loyalty_members"
+    }
+  ],
+  "unused_joins": [
+    {
+      "alias": "lm",
+      "table": "analytics.loyalty_members",
+      "type": "left"
+    }
+  ]
+}

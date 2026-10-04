@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "anchor.schema.json",
+  "title": "Anchor — a published figure the organisation already trusts",
+  "allOf": [{"$ref": "_common.schema.json#/$defs/governance"}],
+  "required": ["published_in", "measures", "values"],
+  "unevaluatedProperties": false,
+  "properties": {
+    "kind": {"const": "anchor"},
+    "published_in": {"type": "string"},
+    "measures": {
+      "type": "object",
+      "required": ["metric", "entity"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {"$ref": "_common.schema.json#/$defs/id"},
+        "entity": {"$ref": "_common.schema.json#/$defs/id"}
+      }
+    },
+    "values": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["period", "value"],
+        "additionalProperties": false,
+        "properties": {"period": {"$ref": "_common.schema.json#/$defs/period"}, "value": {"type": "number"}}
+      }
+    },
+    "tolerance_pct": {"type": "number"}
+  }
+}

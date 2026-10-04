@@ -1,0 +1,27 @@
+table: analytics.customer_monthly
+platform: cloud
+columns:
+- name: snapshot_date
+  type: DATE
+  nullable: true
+- name: customer_id
+  type: INTEGER
+  nullable: true
+- name: home_store_id
+  type: INTEGER
+  nullable: true
+- name: first_purchase_store_id
+  type: INTEGER
+  nullable: true
+- name: last_purchase_date
+  type: DATE
+  nullable: true
+- name: account_status
+  type: VARCHAR
+  nullable: true
+- name: is_staff
+  type: BOOLEAN
+  nullable: true
+- name: orders_12m
+  type: INTEGER
+  nullable: true

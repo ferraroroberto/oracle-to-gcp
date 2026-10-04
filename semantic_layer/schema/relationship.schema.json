@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "relationship.schema.json",
+  "title": "Relationship — the only joins generated SQL may use",
+  "allOf": [{"$ref": "_common.schema.json#/$defs/governance"}],
+  "required": ["from", "to", "join", "cardinality"],
+  "unevaluatedProperties": false,
+  "properties": {
+    "kind": {"const": "relationship"},
+    "from": {"$ref": "_common.schema.json#/$defs/id"},
+    "to": {"$ref": "_common.schema.json#/$defs/id"},
+    "join": {
+      "type": "object",
+      "description": "Join condition per platform; {from} and {to} are the two table aliases.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {"legacy": {"type": "string"}, "cloud": {"type": "string"}}
+    },
+    "join_type": {"enum": ["inner", "left"]},
+    "cardinality": {"enum": ["many_to_one", "one_to_one", "one_to_many", "many_to_many"]},
+    "cardinality_evidence": {"type": "string", "description": "How the cardinality was confirmed (e.g. a harvest probe)."},
+    "safe_for_metrics": {"type": "array", "items": {"$ref": "_common.schema.json#/$defs/id"}}
+  }
+}

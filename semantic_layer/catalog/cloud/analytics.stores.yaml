@@ -1,0 +1,18 @@
+table: analytics.stores
+platform: cloud
+columns:
+- name: store_id
+  type: INTEGER
+  nullable: true
+- name: store_name
+  type: VARCHAR
+  nullable: true
+- name: district
+  type: VARCHAR
+  nullable: true
+- name: region
+  type: VARCHAR
+  nullable: true
+- name: opened_date
+  type: DATE
+  nullable: true

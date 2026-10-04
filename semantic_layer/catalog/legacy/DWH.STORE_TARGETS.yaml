@@ -1,0 +1,12 @@
+table: DWH.STORE_TARGETS
+platform: legacy
+columns:
+- name: STORE_ID
+  type: INTEGER
+  nullable: true
+- name: TARGET_MONTH
+  type: DATE
+  nullable: true
+- name: TARGET_AMOUNT
+  type: DECIMAL(12,2)
+  nullable: true

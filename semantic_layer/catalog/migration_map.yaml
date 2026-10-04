@@ -1,0 +1,54 @@
+generated_by: sl catalog generate
+tables:
+- legacy: DWH.CUSTOMERS
+  cloud: analytics.customers
+  status: migrated
+  columns:
+    CUSTOMER_ID: customer_id
+    SIGNUP_DATE: signup_date
+    FIRST_PURCHASE_DATE: first_purchase_date
+    FIRST_PURCHASE_STORE_ID: first_purchase_store_id
+    HOME_STORE_ID: home_store_id
+    ACCOUNT_STATUS: account_status
+    IS_STAFF: is_staff
+- legacy: DWH.CUSTOMER_MONTHLY
+  cloud: analytics.customer_monthly
+  status: migrated
+  columns:
+    SNAPSHOT_DATE: snapshot_date
+    CUSTOMER_ID: customer_id
+    HOME_STORE_ID: home_store_id
+    FIRST_PURCHASE_STORE_ID: first_purchase_store_id
+    LAST_PURCHASE_DATE: last_purchase_date
+    ACCOUNT_STATUS: account_status
+    IS_STAFF: is_staff
+    ORDERS_12M: orders_12m
+- legacy: DWH.LOYALTY_MEMBERS
+  cloud: analytics.loyalty_members
+  status: migrated
+  columns:
+    CUSTOMER_ID: customer_id
+    ENROLLED_DATE: enrolled_date
+    TIER: tier
+- legacy: DWH.ORDERS
+  cloud: analytics.orders
+  status: migrated
+  columns:
+    ORDER_ID: order_id
+    CUSTOMER_ID: customer_id
+    STORE_ID: store_id
+    ORDER_DATE: order_date
+    AMOUNT: amount
+    ORDER_STATUS: order_status
+- legacy: DWH.STORES
+  cloud: analytics.stores
+  status: migrated
+  columns:
+    STORE_ID: store_id
+    STORE_NAME: store_name
+    DISTRICT: district
+    REGION: region
+    OPENED_DATE: opened_date
+- legacy: DWH.STORE_TARGETS
+  cloud: null
+  status: pending

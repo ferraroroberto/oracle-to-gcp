@@ -1,0 +1,47 @@
+id: dimension.first_purchase_store
+kind: dimension
+name: First-purchase store
+description: Store where the customer completed their first purchase. Empty for customers who never bought.
+synonyms:
+- store
+- first store
+- first purchase store
+- store of first purchase
+not_to_be_confused_with:
+- id: dimension.home_store
+  difference: store assigned at signup (always present); the management pack's "store"
+owner:
+  team: core_analytics
+  steward: avery.lane
+status: certified
+version: 1
+last_reviewed: '2026-10-03'
+review_by: '2027-04-03'
+levels:
+- name: store
+  expressions:
+    cloud: '{t}.store_name'
+    legacy: '{t}.STORE_NAME'
+- name: district
+  expressions:
+    cloud: '{t}.district'
+    legacy: '{t}.DISTRICT'
+- name: region
+  expressions:
+    cloud: '{t}.region'
+    legacy: '{t}.REGION'
+bindings:
+- platform: cloud
+  source: analytics.stores
+  key: store_id
+  preferred: true
+  status: active
+- platform: legacy
+  source: DWH.STORES
+  key: STORE_ID
+  status: legacy
+provenance:
+  method: contribute
+  from: conversation
+  confirmed_by: avery.lane
+  confirmed_on: '2026-10-03'

@@ -17,7 +17,7 @@ Canonical instructions for AI coding agents working in this repository. Claude C
 
 ## Verification (before declaring a task done)
 
-This repo ships a single pre-ship gate that runs byte-compile, `ruff`, and `pytest` (unit + the headless e2e boot smoke test) as one pass/fail pipeline:
+This repo ships a single pre-ship gate that runs byte-compile, `ruff`, the semantic layer gate (`validate`, `build --check`, `eval`), and `pytest` (unit + the headless e2e boot smoke test + `semantic_layer/tests`) as one pass/fail pipeline:
 
 ```powershell
 & .\scripts\verify-before-ship.ps1
@@ -43,5 +43,7 @@ This repo ships no tray, no PWA, and no long-lived background service — `launc
 
 ## This repository
 Oracle to GCP is a local Streamlit + Python pipeline prototype for translating Oracle SQL scripts to BigQuery Standard SQL through a deterministic, inspectable validation loop. It currently uses SQLite mock databases for the Oracle and BigQuery sides, with the local LLM hub called only as a stateless translation function when available.
+
+`semantic_layer/` is a separate, self-contained research spike (a mock team semantic layer + `sl` toolkit + `.github/skills/semantic-*` agent skills). It must never import from `src/` or `unit_test/` — it is designed to be lifted out and ported. After changing its YAML under `semantic_layer/domains/`, run `python -m semantic_layer build` and commit the regenerated `semantic_layer/build/` (the gate's `build --check` fails otherwise). Its content is fictitious; this repo is public.
 
 No tray or PWA process is shipped in this repo. For code changes, run `scripts/verify-before-ship.ps1`; for manual exploration, start Streamlit with `launch_app.bat` or `python -m streamlit run app/app.py`. See `README.md` for operation and `docs/architecture-rationale.md` for the design reasoning.

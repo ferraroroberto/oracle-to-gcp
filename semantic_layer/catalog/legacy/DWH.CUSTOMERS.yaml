@@ -1,0 +1,24 @@
+table: DWH.CUSTOMERS
+platform: legacy
+columns:
+- name: CUSTOMER_ID
+  type: INTEGER
+  nullable: true
+- name: SIGNUP_DATE
+  type: DATE
+  nullable: true
+- name: FIRST_PURCHASE_DATE
+  type: DATE
+  nullable: true
+- name: FIRST_PURCHASE_STORE_ID
+  type: INTEGER
+  nullable: true
+- name: HOME_STORE_ID
+  type: INTEGER
+  nullable: true
+- name: ACCOUNT_STATUS
+  type: VARCHAR
+  nullable: true
+- name: IS_STAFF
+  type: INTEGER
+  nullable: true

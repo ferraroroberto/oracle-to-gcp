@@ -1,0 +1,191 @@
+{
+  "aggregates": [
+    {
+      "distinct": true,
+      "expression": "COUNT(DISTINCT a.CUSTOMER_ID)",
+      "function": "COUNT",
+      "name": "ACTIVE_CUSTOMERS",
+      "sources": [
+        "DWH.CUSTOMER_MONTHLY.CUSTOMER_ID"
+      ]
+    }
+  ],
+  "ctes": [
+    {
+      "line": 4,
+      "name": "active",
+      "outputs": [
+        "CUSTOMER_ID",
+        "HOME_STORE_ID"
+      ],
+      "tables": [
+        "DWH.CUSTOMER_MONTHLY"
+      ]
+    }
+  ],
+  "dialect": "oracle",
+  "filters": [
+    {
+      "alias": "cm",
+      "canonical": "snapshot_date = CAST('2026-08-31' AS DATE)",
+      "columns": [
+        "SNAPSHOT_DATE"
+      ],
+      "literals": [
+        "2026-08-31"
+      ],
+      "predicate": "cm.SNAPSHOT_DATE = TO_DATE('2026-08-31', 'YYYY-MM-DD')",
+      "scope": "cte:active",
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "alias": "cm",
+      "canonical": "account_status = 'A'",
+      "columns": [
+        "ACCOUNT_STATUS"
+      ],
+      "literals": [
+        "A"
+      ],
+      "predicate": "cm.ACCOUNT_STATUS = 'A'",
+      "scope": "cte:active",
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "alias": "cm",
+      "canonical": "is_staff = 0",
+      "columns": [
+        "IS_STAFF"
+      ],
+      "literals": [
+        "0"
+      ],
+      "predicate": "cm.IS_STAFF = 0",
+      "scope": "cte:active",
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "alias": "cm",
+      "canonical": "last_purchase_date >= snapshot_date + INTERVAL (-12) MONTH",
+      "columns": [
+        "LAST_PURCHASE_DATE",
+        "SNAPSHOT_DATE"
+      ],
+      "literals": [
+        "12"
+      ],
+      "predicate": "cm.LAST_PURCHASE_DATE >= ADD_MONTHS(cm.SNAPSHOT_DATE, -12)",
+      "scope": "cte:active",
+      "table": "DWH.CUSTOMER_MONTHLY"
+    }
+  ],
+  "group_by": [
+    "s.REGION",
+    "s.STORE_NAME",
+    "TRUNC(c.FIRST_PURCHASE_DATE, 'MONTH')"
+  ],
+  "joins": [
+    {
+      "condition": "s.STORE_ID = a.HOME_STORE_ID",
+      "inferred_cardinality": "many_to_one",
+      "keys": [
+        {
+          "left": "HOME_STORE_ID",
+          "left_alias": "a",
+          "left_source": [
+            "DWH.CUSTOMER_MONTHLY.HOME_STORE_ID"
+          ],
+          "right": "STORE_ID",
+          "right_alias": "s",
+          "right_source": [
+            "DWH.STORES.STORE_ID"
+          ]
+        }
+      ],
+      "left_alias": "a",
+      "left_table": "cte:active",
+      "right_alias": "s",
+      "right_table": "DWH.STORES",
+      "scope": "main",
+      "type": "inner"
+    },
+    {
+      "condition": "c.CUSTOMER_ID = a.CUSTOMER_ID",
+      "inferred_cardinality": "many_to_one",
+      "keys": [
+        {
+          "left": "CUSTOMER_ID",
+          "left_alias": "a",
+          "left_source": [
+            "DWH.CUSTOMER_MONTHLY.CUSTOMER_ID"
+          ],
+          "right": "CUSTOMER_ID",
+          "right_alias": "c",
+          "right_source": [
+            "DWH.CUSTOMERS.CUSTOMER_ID"
+          ]
+        }
+      ],
+      "left_alias": "a",
+      "left_table": "cte:active",
+      "right_alias": "c",
+      "right_table": "DWH.CUSTOMERS",
+      "scope": "main",
+      "type": "inner"
+    }
+  ],
+  "lines": [
+    4,
+    20
+  ],
+  "outputs": [
+    {
+      "expression": "s.REGION",
+      "name": "REGION",
+      "sources": [
+        "DWH.STORES.REGION"
+      ]
+    },
+    {
+      "expression": "s.STORE_NAME",
+      "name": "STORE_NAME",
+      "sources": [
+        "DWH.STORES.STORE_NAME"
+      ]
+    },
+    {
+      "expression": "TRUNC(c.FIRST_PURCHASE_DATE, 'MONTH')",
+      "name": "JOIN_MONTH",
+      "sources": [
+        "DWH.CUSTOMERS.FIRST_PURCHASE_DATE"
+      ]
+    },
+    {
+      "expression": "COUNT(DISTINCT a.CUSTOMER_ID)",
+      "name": "ACTIVE_CUSTOMERS",
+      "sources": [
+        "DWH.CUSTOMER_MONTHLY.CUSTOMER_ID"
+      ]
+    }
+  ],
+  "query": "queries/core_analytics_pilot.oracle.sql",
+  "statements": 1,
+  "tables": [
+    {
+      "alias": "cm",
+      "scope": "cte:active",
+      "table": "DWH.CUSTOMER_MONTHLY"
+    },
+    {
+      "alias": "s",
+      "scope": "main",
+      "table": "DWH.STORES"
+    },
+    {
+      "alias": "c",
+      "scope": "main",
+      "table": "DWH.CUSTOMERS"
+    }
+  ],
+  "unused_joins": []
+}

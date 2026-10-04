@@ -253,6 +253,22 @@ It reuses the query cost audit's `estimator.mode` (`mock` / `bigquery`) and adds
 
 Set `llm.enabled` to `false` to leave every query at its baseline (zero iterations attempted). The report is written to `data/output/query_cost_audit/optimization_report.md` unless overridden in `output.report_md`.
 
+## Team Semantic Layer (research spike)
+
+`semantic_layer/` is a self-contained, mock-data reference implementation of a **git-hosted, team-owned semantic layer** plus agent skills. Business definitions (what a "customer" is, which table and filter, who owns it, which checks guard it) are YAML files owned per team. A deterministic toolkit (`python -m semantic_layer …`, "`sl`") validates them, learns new ones from working SQL by interviewing its author, answers questions with cited, validated SQL that reconciles against published figures, and runs the health checks. Five skills in `.github/skills/semantic-*` (GitHub Copilot / any `SKILL.md` agent) drive it.
+
+It runs on two DuckDB mock warehouses (legacy Oracle-shaped, cloud BigQuery-shaped) with a fictitious retail domain, and it imports nothing from `src/`, so it can be lifted out whole.
+
+```powershell
+& .\.venv\Scripts\python.exe -m semantic_layer mock seed
+& .\.venv\Scripts\python.exe -m semantic_layer ask resolve "how many customers per store"
+& .\.venv\Scripts\python.exe -m semantic_layer validate
+```
+
+- Operating manual, walkthrough and command reference: [`semantic_layer/README.md`](semantic_layer/README.md)
+- Bootstrapping it in a real repository: [`semantic_layer/PORTING.md`](semantic_layer/PORTING.md)
+- Design record and phased plan: [`docs/semantic-layer-design.md`](docs/semantic-layer-design.md) (also as a self-contained page, [`docs/semantic-layer-design.html`](docs/semantic-layer-design.html))
+
 ## Shared Fleet-Wide GCP IO Helpers
 
 `src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume, per the consolidation tracked in issue #17. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
@@ -293,6 +309,14 @@ unit_test/
   query_cost_audit_config.json    Config template for the query cost audit
   query_optimization_loop.py      Standalone bounded LLM cost-optimization loop
   query_optimization_loop_config.json Config template for the optimization loop
+semantic_layer/                  Team semantic layer spike (self-contained; see its README)
+  sl/                            The `sl` toolkit (python -m semantic_layer)
+  domains/ schema/ catalog/      Curated definitions, JSON Schemas, generated catalog
+  harvest/ queries/ evals/       Harvest sessions, harvested queries, golden questions
+  build/                         Generated index, model.json, docs
+  tests/                         Toolkit tests
+.github/skills/semantic-*/       Agent skills: ask, find, harvest, contribute, steward
+.github/workflows/semantic-layer.yml  Semantic layer CI gate
 tests/
   test_oracle_to_bigquery.py     Mock pipeline tests
   test_schema_compatibility_audit.py Standalone schema audit tests

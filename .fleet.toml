@@ -10,4 +10,4 @@
 display_name = "Oracle to GCP"
 layer        = "working-pipe"
 icon         = "☁️"
-description  = "Local Oracle SQL to BigQuery translator prototype with a SQLite-backed mock validation loop."
+description  = "Local Oracle SQL to BigQuery translator prototype with a SQLite-backed mock validation loop, plus a mock team semantic layer with data-agent skills."

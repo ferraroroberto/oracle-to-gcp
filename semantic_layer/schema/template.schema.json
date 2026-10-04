@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "template.schema.json",
+  "title": "Template — a parameterised, verified query the agent prefers over writing new SQL",
+  "allOf": [{"$ref": "_common.schema.json#/$defs/governance"}],
+  "required": ["question_pattern", "entity", "metric", "dimensions", "uses", "sql", "verified_by", "verified_on"],
+  "unevaluatedProperties": false,
+  "properties": {
+    "kind": {"const": "template"},
+    "question_pattern": {"type": "string"},
+    "entity": {"$ref": "_common.schema.json#/$defs/id"},
+    "metric": {"$ref": "_common.schema.json#/$defs/id"},
+    "dimensions": {"type": "array", "items": {"$ref": "_common.schema.json#/$defs/dimref"}},
+    "parameters": {
+      "type": "object",
+      "description": "Placeholders in the SQL files ({{name}}). 'period' parameters take YYYY-MM.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {"enum": ["period", "value"]},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "uses": {"type": "array", "minItems": 1, "items": {"$ref": "_common.schema.json#/$defs/idref"}},
+    "sql": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {"legacy": {"type": "string"}, "cloud": {"type": "string"}},
+      "description": "SQL file per platform, relative to this YAML file."
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "executes": {"type": "boolean"},
+        "reconciles_with": {"$ref": "_common.schema.json#/$defs/id"},
+        "tolerance_pct": {"type": "number"}
+      }
+    },
+    "verified_by": {"type": "string"},
+    "verified_on": {"$ref": "_common.schema.json#/$defs/date"},
+    "expires": {"$ref": "_common.schema.json#/$defs/date"}
+  }
+}

@@ -1,0 +1,21 @@
+table: DWH.ORDERS
+platform: legacy
+columns:
+- name: ORDER_ID
+  type: INTEGER
+  nullable: true
+- name: CUSTOMER_ID
+  type: INTEGER
+  nullable: true
+- name: STORE_ID
+  type: INTEGER
+  nullable: true
+- name: ORDER_DATE
+  type: DATE
+  nullable: true
+- name: AMOUNT
+  type: DECIMAL(10,2)
+  nullable: true
+- name: ORDER_STATUS
+  type: VARCHAR
+  nullable: true

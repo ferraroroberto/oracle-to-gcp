@@ -1,0 +1,17 @@
+# Ownership of the semantic layer — one line per owning team's folder.
+# Copy into .github/CODEOWNERS (merged with any existing rules) once the teams
+# below exist as GitHub teams; GitHub then requires the owning team's approval
+# on every change to its definitions. The mock teams here are fictitious, which
+# is why this file is not active in this repository.
+#
+# The folder name must match `owner.team` in each definition (sl validate warns
+# when it does not).
+
+/semantic_layer/domains/core_analytics/   @your-org/core-analytics
+/semantic_layer/domains/marketing/        @your-org/marketing
+/semantic_layer/domains/shared/           @your-org/semantic-layer-core
+
+# The toolkit, schemas and skills belong to the core team.
+/semantic_layer/sl/                       @your-org/semantic-layer-core
+/semantic_layer/schema/                   @your-org/semantic-layer-core
+/.github/skills/semantic-*/               @your-org/semantic-layer-core
