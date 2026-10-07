@@ -57,6 +57,8 @@ The sidebar also includes **Process Map**, an executive one-page visual of the m
 
 Requires `cloudflared` on `PATH` (`winget install Cloudflare.cloudflared` on Windows, `brew install cloudflared` / `apt install cloudflared` elsewhere). Both scripts start Streamlit on port `8501` and print the public `https://` tunnel URL to share; `Ctrl+C` stops the tunnel (and the underlying Streamlit process).
 
+The shared link runs in shared mode (`ORACLE_TO_GCP_SHARED_MODE=1`, set by both scripts): the **Execution** page shows only the built-in demo script with its run controls. The Execution, Connection Configuration, Table Correspondence and Advanced JSON tabs, and the config-path field, are available only when the app is launched locally with `launch_app`.
+
 ## Mock Inputs
 
 - Oracle demo script: `examples/demo_oracle_script.sql`

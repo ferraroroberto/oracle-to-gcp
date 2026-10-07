@@ -20,6 +20,9 @@ EXAMPLES_DIR = ROOT_DIR / "examples"
 
 APP_NAME = os.getenv("ORACLE_TO_GCP_APP_NAME", "Oracle to GCP")
 DEBUG = os.getenv("DEBUG", "0") == "1"
+# Set by launch_server.bat / launch_server.sh: the app is reachable through a
+# shared link, so the UI offers only the built-in demo (see translator_demo).
+SHARED_MODE = os.getenv("ORACLE_TO_GCP_SHARED_MODE", "0") == "1"
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8000")
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5")
 LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "8"))

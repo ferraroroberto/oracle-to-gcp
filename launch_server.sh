@@ -10,6 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 PORT=8501
+# Shared link: the app offers only the built-in demo (src/config.py SHARED_MODE).
+export ORACLE_TO_GCP_SHARED_MODE=1
 
 if [ ! -f ".venv/bin/python" ]; then
     echo "[ERROR] Virtual environment not found."
