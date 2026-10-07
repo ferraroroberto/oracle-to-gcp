@@ -23,10 +23,10 @@ import sqlglot
 from sqlglot import exp
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import KIND_DIRS, Layer, LayerError, read_yaml, write_json, write_yaml
+from semantic_layer.sl.common import KIND_DIRS, Layer, LayerError, read_json, read_yaml, write_json, write_yaml
 from semantic_layer.sl.model import Model, load_model
 from semantic_layer.sl.platforms import MockDuckDBPlatform, get_platform
-from semantic_layer.sl.sqlutil import canonical, literals, predicate_set, split_conjuncts
+from semantic_layer.sl.sqlutil import canonical, is_time_equality, literals, predicate_set, split_conjuncts
 
 MAX_DISTRIBUTION_VALUES = 50  # wider than this is not a code column — never probe its values
 
@@ -251,7 +251,7 @@ def cross_reference(facts: dict[str, Any], layer: Layer, platform: str, model: M
             def_terms = set(predicate_set(binding["filter"], dialect)) if binding.get("filter") else set()
             time_col = (binding.get("time_column") or "").lower()
             compared = {t for t in query_terms
-                        if not (time_col and _is_time_equality(t, time_col))}
+                        if not (time_col and is_time_equality(t, time_col))}
             if compared == def_terms:
                 outcome = "matches"
             else:
@@ -267,10 +267,6 @@ def cross_reference(facts: dict[str, Any], layer: Layer, platform: str, model: M
         exact = [c for c in table_comparisons if c["outcome"] == "matches"]
         comparisons += exact or table_comparisons
     return {"platform": platform, "tables": tables, "filter_comparisons": comparisons}
-
-
-def _is_time_equality(canonical_term: str, time_column: str) -> bool:
-    return bool(re.match(rf"^{re.escape(time_column)}\s*=", canonical_term))
 
 
 # --------------------------------------------------------------------------- probes
@@ -511,8 +507,8 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
     if not answers_path.exists():
         raise LayerError(f"No answers.yaml in {folder} — run the interview first (semantic-harvest skill)")
     answers = read_yaml(answers_path)
-    facts = _load_json(folder / "parse.json")
-    probes = _load_json(folder / "probes.json") if (folder / "probes.json").exists() else {}
+    facts = read_json(folder / "parse.json")
+    probes = read_json(folder / "probes.json") if (folder / "probes.json").exists() else {}
     session = answers["session"]
     platform = session["platform"]
     other = "cloud" if platform == "legacy" else "legacy"
@@ -553,7 +549,7 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
         entity_tables[item["id"]] = (table, scope_alias)
         time_col = item.get("time_column")
         conditions = [f for f in facts["filters"] if f.get("table") and catalog_mod.norm(f["table"]) ==
-                      catalog_mod.norm(table) and not (time_col and _is_time_equality(f["canonical"], time_col.lower()))]
+                      catalog_mod.norm(table) and not (time_col and is_time_equality(f["canonical"], time_col.lower()))]
         nodes = [sqlglot.parse_one(f"SELECT 1 WHERE {c['predicate']}", read=dialect).args["where"].this
                  for c in conditions]
         record = base(item, "entity")
@@ -583,7 +579,7 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
             raise LayerError(f"Dimension {item['id']}: join alias '{item['from_join']}' not found in the parse")
         table = join["right_table"]
         right_key = join["keys"][0]["right"] if join["keys"] else item.get("key")
-        column_map = _column_map(catalog, platform, table)
+        column_map = catalog.column_map(platform, table)
         other_table = catalog.other_side(platform, table)
         if item.get("reuse"):
             # An existing certified dimension: only the relationship is new.
@@ -607,7 +603,7 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
         if other_table and catalog.other_side(platform, entity_table):
             joins[other] = _Placeholders.render(
                 on_node, {entity_alias: "{from}", item["from_join"]: "{to}"}, other_dialect,
-                {entity_alias: _column_map(catalog, platform, entity_table), item["from_join"]: column_map},
+                {entity_alias: catalog.column_map(platform, entity_table), item["from_join"]: column_map},
             )
         relationship = {
             "id": f"rel.{entity_id.split('.', 1)[1]}__{item['id'].split('.', 1)[1]}",
@@ -712,21 +708,6 @@ def _write_drafts(layer: Layer, model: Model, catalog: catalog_mod.Catalog, answ
     return written
 
 
-def _load_json(path: Path) -> Any:
-    import json
-
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _column_map(catalog: catalog_mod.Catalog, platform: str, table: str) -> dict[str, str]:
-    row = catalog.counterpart(platform, table)
-    if not row or not row.get("columns"):
-        return {}
-    if platform == "legacy":
-        return {k.upper(): v for k, v in row["columns"].items()}
-    return {v.upper(): k for k, v in row["columns"].items()}
-
-
 def _counterpart_binding(layer: Layer, catalog: catalog_mod.Catalog, platform: str, other: str, other_dialect: str,
                          table: str, binding: dict[str, Any], nodes: list[exp.Expression],
                          conditions: list[dict[str, Any]], item: dict[str, Any]) -> dict[str, Any] | None:
@@ -734,7 +715,7 @@ def _counterpart_binding(layer: Layer, catalog: catalog_mod.Catalog, platform: s
     other_table = catalog.other_side(platform, table)
     if not other_table:
         return None
-    column_map = _column_map(catalog, platform, table)
+    column_map = catalog.column_map(platform, table)
     proposal: dict[str, Any] = {"platform": other, "source": other_table,
                                 "key": column_map.get(binding["key"].upper(), binding["key"].lower())}
     if binding.get("time_column"):

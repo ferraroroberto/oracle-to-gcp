@@ -32,6 +32,12 @@ def _as_value(fragment: str, dialect: str) -> exp.Expression:
     return sqlglot.parse_one(f"SELECT {text} FROM x AS t", read=dialect).expressions[0]
 
 
+def as_join(fragment: str, dialect: str) -> exp.Expression:
+    """Parse a relationship's join fragment (``{from}``/``{to}`` substituted) into its ON condition."""
+    text = substitute(fragment, **{"from": "f", "to": "o"})
+    return sqlglot.parse_one(f"SELECT 1 FROM a AS f JOIN b AS o ON {text}", read=dialect).find(exp.Join).args["on"]
+
+
 def fragment_columns(fragment: str, dialect: str, predicate: bool = True) -> set[str]:
     """Lower-cased column names a fragment reads (placeholders excluded)."""
     node = _as_condition(fragment, dialect) if predicate else _as_value(fragment, dialect)
@@ -67,6 +73,11 @@ def canonical(node: exp.Expression) -> str:
 def predicate_set(fragment: str, dialect: str) -> list[str]:
     """Canonical conjuncts of a filter fragment, in source order."""
     return [canonical(term) for term in split_conjuncts(_as_condition(fragment, dialect))]
+
+
+def is_time_equality(canonical_term: str, time_column: str) -> bool:
+    """Whether a canonical predicate term is ``<time_column> = …`` (the snapshot pin)."""
+    return bool(re.match(rf"^{re.escape(time_column)}\s*=", canonical_term))
 
 
 def literals(node: exp.Expression) -> list[str]:
