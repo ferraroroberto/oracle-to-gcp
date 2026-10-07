@@ -27,7 +27,7 @@ from sqlglot import exp
 from semantic_layer.sl.common import Layer, LayerError, month_end, read_json
 from semantic_layer.sl.model import Definition, Model, load_model, strip_ref, template_sql
 from semantic_layer.sl.platforms import get_platform
-from semantic_layer.sl.sqlutil import canonical, split_conjuncts, substitute
+from semantic_layer.sl.sqlutil import as_join, canonical, is_time_equality, predicate_set, split_conjuncts, substitute
 from semantic_layer.sl.validate import normalise_term, stale_pins
 
 RESOLVABLE = ("entity", "dimension", "metric", "filter")
@@ -350,24 +350,20 @@ def lint(sql: str, model: Model, spec: dict[str, Any], platform: str, dialect: s
     entity = model.get(spec["entity"])
     binding = entity.binding(platform) or {}
     if binding.get("filter"):
-        expected = [canonical(t) for t in split_conjuncts(
-            sqlglot.parse_one(f"SELECT 1 FROM x AS e WHERE {substitute(binding['filter'], t='e')}", read=dialect)
-            .args["where"].this)]
+        expected = predicate_set(binding["filter"], dialect)
         for term in expected:
             if term not in where_terms:
                 findings.append({"rule": "certified_filter",
                                  "message": f"certified filter of {entity.id} missing: {term}"})
     time_column = (binding.get("time_column") or "").lower()
-    if time_column and not any(re.match(rf"^{re.escape(time_column)}\s*=", t) for t in where_terms):
+    if time_column and not any(is_time_equality(t, time_column) for t in where_terms):
         findings.append({"rule": "snapshot_filter",
                          "message": f"no {time_column} = <period> filter — would count every snapshot"})
     declared = []
     for relationship in model.of_kind("relationship"):
         condition = (relationship.data.get("join") or {}).get(platform)
         if condition:
-            node = sqlglot.parse_one(f"SELECT 1 FROM a AS f JOIN b AS o ON {substitute(condition, **{'from': 'f', 'to': 'o'})}",
-                                     read=dialect)
-            declared.append(_column_pairs(node.find(exp.Join).args["on"]))
+            declared.append(_column_pairs(as_join(condition, dialect)))
     for join in tree.find_all(exp.Join):
         on = join.args.get("on")
         if on is not None and _column_pairs(on) not in declared:

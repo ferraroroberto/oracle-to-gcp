@@ -26,7 +26,7 @@ from sqlglot import exp
 from semantic_layer.sl import catalog as catalog_mod
 from semantic_layer.sl.common import KINDS, PLATFORMS, Layer
 from semantic_layer.sl.model import Definition, Model, jsonable, load_model, ref_version, references, strip_ref
-from semantic_layer.sl.sqlutil import fragment_columns, substitute
+from semantic_layer.sl.sqlutil import as_join, fragment_columns
 
 
 @dataclass
@@ -176,14 +176,11 @@ def _check_relationship_kinds(definition: Definition, model: Model, dialects: di
             report.errors.append(f"{where}: join given for {platform} but both sides are not bound there")
             continue
         try:
-            condition = sqlglot.parse_one(
-                f"SELECT 1 FROM a AS f JOIN b AS o ON {substitute(join, **{'from': 'f', 'to': 'o'})}",
-                read=dialects[platform],
-            )
+            on = as_join(join, dialects[platform])
         except sqlglot.errors.ParseError as exc:
             report.errors.append(f"{where}: {platform} join does not parse: {exc}")
             continue
-        aliases = {column.table for column in condition.find_all(exp.Column)}
+        aliases = {column.table for column in on.find_all(exp.Column)}
         if not aliases <= {"f", "o"}:
             report.errors.append(f"{where}: {platform} join must reference only {{from}} and {{to}}")
 

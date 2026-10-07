@@ -54,16 +54,19 @@ class Catalog:
         other = "cloud" if platform == "legacy" else "legacy"
         return row.get(other)
 
+    def column_map(self, platform: str, table: str) -> dict[str, str]:
+        """Column-name map translating ``platform``'s spellings to the other platform's, upper-cased keys."""
+        row = self.counterpart(platform, table)
+        if not row or not row.get("columns"):
+            return {}
+        mapping = row["columns"]
+        if platform == "legacy":
+            return {k.upper(): v for k, v in mapping.items()}
+        return {v.upper(): k for k, v in mapping.items()}
+
     def map_column(self, platform: str, table: str, column: str) -> str | None:
         """Translate a column name to the other platform's spelling."""
-        row = self.counterpart(platform, table)
-        if not row:
-            return None
-        mapping = row.get("columns", {})
-        if platform == "legacy":
-            return mapping.get(column.upper()) or mapping.get(column)
-        reverse = {v.lower(): k for k, v in mapping.items()}
-        return reverse.get(column.lower())
+        return self.column_map(platform, table).get(column.upper())
 
     def all_tables(self) -> list[tuple[str, str]]:
         return [(p, e["table"]) for p in PLATFORMS for e in self.tables.get(p, {}).values()]
