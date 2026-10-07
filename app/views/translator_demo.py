@@ -11,6 +11,7 @@ import streamlit as st
 
 from app.log_panel import stream_to_streamlit
 from src import clear_log_buffer, get_logger
+from src.config import SHARED_MODE
 from src.connections import test_all_connections
 from src.execution import (
     ensure_execution_input_dir,
@@ -39,6 +40,19 @@ log = get_logger("ui.execution")
 def render() -> None:
     st.header("Oracle to BigQuery Execution")
 
+    if SHARED_MODE:
+        # Reached through launch_server.*'s shared link: run the built-in demo
+        # with the on-disk config, and nothing that edits config or touches
+        # host paths.
+        log.info("UI: shared mode, Execution page limited to the built-in demo")
+        st.info(
+            "Shared demo: this link runs the built-in example script only. "
+            "Configuration, file execution and registry editing are available "
+            "when the app is launched locally with launch_app."
+        )
+        _render_demo_tab(load_pipeline_config(), editable=False)
+        return
+
     config_path = st.text_input(
         "Pipeline config JSON",
         value=str(DEFAULT_PIPELINE_CONFIG_PATH),
@@ -65,13 +79,18 @@ def render() -> None:
         _render_configuration_tab(Path(config_path), pipeline_config)
 
 
-def _render_demo_tab(pipeline_config) -> None:
-    script = st.text_area(
-        "Oracle script",
-        value=load_demo_script(),
-        height=320,
-        key="demo_oracle_script",
-    )
+def _render_demo_tab(pipeline_config, editable: bool = True) -> None:
+    if editable:
+        script = st.text_area(
+            "Oracle script",
+            value=load_demo_script(),
+            height=320,
+            key="demo_oracle_script",
+        )
+    else:
+        script = load_demo_script()
+        st.markdown("**Oracle script**")
+        st.code(script, language="sql")
     active_config = _render_run_controls("demo", pipeline_config)
 
     with st.expander("Mapping registry", expanded=False):

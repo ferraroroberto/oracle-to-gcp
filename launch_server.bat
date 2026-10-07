@@ -15,6 +15,8 @@ echo ============================================================
 echo.
 
 set PORT=8501
+REM Shared link: the app offers only the built-in demo (src/config.py SHARED_MODE).
+set ORACLE_TO_GCP_SHARED_MODE=1
 
 if not exist ".venv\Scripts\python.exe" (
     echo [ERROR] Virtual environment not found.
