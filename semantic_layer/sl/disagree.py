@@ -64,11 +64,21 @@ def variants_from_sessions(layer: Layer) -> list[dict[str, Any]]:
 
 
 def _key_for(session: dict[str, Any], alias: str | None, table: str) -> str | None:
+    """The population key of a variant: the entity key the session declared for its alias.
+
+    Fallback when the alias is not an entity's ``from_alias`` (e.g. the filters sit inside a CTE the entity is
+    declared on): the column of this table, among the session's join keys, that matches a declared key.
+    """
+    keys = session["keys"]
+    declared = keys.get(catalog_mod.norm(alias or ""))
+    if declared:
+        return declared
+    declared_columns = {key.lower() for key in keys.values() if key}
     for join in session["facts"]["joins"]:
         for key in join["keys"]:
             for source in key["left_source"] + key["right_source"]:
                 src_table, column = source.rsplit(".", 1)
-                if catalog_mod.norm(src_table) == catalog_mod.norm(table) and column.lower().endswith("customer_id"):
+                if catalog_mod.norm(src_table) == catalog_mod.norm(table) and column.lower() in declared_columns:
                     return column
     return None
 
