@@ -304,7 +304,3 @@ def require_mock(layer: Layer) -> None:
     uses_mock = any(layer.platform_config(p).get("adapter") == "mock_duckdb" for p in ("legacy", "cloud"))
     if uses_mock and not mock_exists(layer):
         seed(layer)
-
-
-def mock_files(layer: Layer) -> list[Path]:
-    return [layer.mock_path(platform) for platform in ("legacy", "cloud")]

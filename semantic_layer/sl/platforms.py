@@ -264,8 +264,3 @@ def get_platform(layer: Layer, platform: str) -> Platform:
             schemas=list(ora.get("schemas", [])),
         )
     raise LayerError(f"Unknown adapter '{adapter}' for platform '{platform}'")
-
-
-def render(expression: sqlglot.Expression, dialect: str) -> str:
-    """Render a sqlglot expression for a platform (e.g. LIMIT vs FETCH FIRST)."""
-    return expression.sql(dialect=dialect)

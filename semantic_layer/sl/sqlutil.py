@@ -86,12 +86,3 @@ def literals(node: exp.Expression) -> list[str]:
     for lit in node.find_all(exp.Literal):
         values.append(lit.this if lit.is_string else str(lit.this))
     return values
-
-
-def normalise_sql(sql: str) -> str:
-    """Whitespace/case-insensitive form for containment checks."""
-    return re.sub(r"\s+", " ", sql).strip().lower()
-
-
-def transpile(sql: str, read: str, write: str) -> str:
-    return ";\n".join(sqlglot.transpile(sql, read=read, write=write))
