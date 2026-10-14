@@ -491,7 +491,7 @@ def _entity_alias_scope(facts: dict[str, Any], alias: str) -> tuple[str | None, 
     return None, None
 
 
-def _main_alias_for_cte(facts: dict[str, Any], sql: str, cte_name: str, dialect: str) -> str | None:
+def _main_alias_for_cte(sql: str, cte_name: str, dialect: str) -> str | None:
     tree = sqlglot.parse(sql, read=dialect)[-1]
     main = tree if isinstance(tree, exp.Select) else tree.find(exp.Select)
     for table in main.find_all(exp.Table):
@@ -508,7 +508,6 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
         raise LayerError(f"No answers.yaml in {folder} — run the interview first (semantic-harvest skill)")
     answers = read_yaml(answers_path)
     facts = read_json(folder / "parse.json")
-    probes = read_json(folder / "probes.json") if (folder / "probes.json").exists() else {}
     session = answers["session"]
     platform = session["platform"]
     other = "cloud" if platform == "legacy" else "legacy"
@@ -544,7 +543,7 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
         table, scope_alias = _entity_alias_scope(facts, item["from_alias"])
         if table is None:
             raise LayerError(f"Entity {item['id']}: alias '{item['from_alias']}' not found in the parse")
-        main_alias = _main_alias_for_cte(facts, sql, item["from_alias"], dialect) or item["from_alias"]
+        main_alias = _main_alias_for_cte(sql, item["from_alias"], dialect) or item["from_alias"]
         entity_alias_main[item["id"]] = main_alias
         entity_tables[item["id"]] = (table, scope_alias)
         time_col = item.get("time_column")
@@ -564,10 +563,10 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
         binding["status"] = "active" if platform == "cloud" else "legacy"
         record["bindings"] = [binding]
         counterpart = _counterpart_binding(layer, catalog, platform, other, other_dialect, table, binding,
-                                           nodes, conditions, item)
+                                           nodes, conditions)
         if counterpart:
             record["bindings"].append(counterpart)
-        record["checks"] = _suggest_checks(item, probes, table, counterpart is not None)
+        record["checks"] = _suggest_checks(item, counterpart is not None)
         if item.get("anchors"):
             record["anchors"] = item["anchors"]
         record["provenance"] = provenance
@@ -588,7 +587,7 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
                 raise LayerError(f"Dimension {item['id']} is marked reuse but does not exist yet")
             item = {**item, "name": existing.data.get("name", item["id"])}
         else:
-            definitions.append(_dimension_record(item, base(item, "dimension"), facts, join, platform, other, dialect,
+            definitions.append(_dimension_record(item, base(item, "dimension"), facts, platform, other, dialect,
                                                  other_dialect, table, other_table, right_key, column_map,
                                                  provenance))
 
@@ -640,11 +639,11 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
         record["provenance"] = provenance
         definitions.append(record)
 
-    return _write_drafts(layer, model, catalog, answers, tree, facts, platform, other, dialect, other_dialect,
+    return _write_drafts(layer, model, catalog, answers, tree, platform, other, dialect, other_dialect,
                          definitions, provenance, team, steward, overwrite)
 
 
-def _dimension_record(item: dict[str, Any], record: dict[str, Any], facts: dict[str, Any], join: dict[str, Any],
+def _dimension_record(item: dict[str, Any], record: dict[str, Any], facts: dict[str, Any],
                       platform: str, other: str, dialect: str, other_dialect: str, table: str,
                       other_table: str | None, right_key: str, column_map: dict[str, str],
                       provenance: dict[str, Any]) -> dict[str, Any]:
@@ -676,7 +675,7 @@ def _dimension_record(item: dict[str, Any], record: dict[str, Any], facts: dict[
 
 
 def _write_drafts(layer: Layer, model: Model, catalog: catalog_mod.Catalog, answers: dict[str, Any],
-                  tree: exp.Expression, facts: dict[str, Any], platform: str, other: str, dialect: str,
+                  tree: exp.Expression, platform: str, other: str, dialect: str,
                   other_dialect: str, definitions: list[dict[str, Any]], provenance: dict[str, Any], team: str,
                   steward: str, overwrite: bool) -> list[Path]:
     written: list[Path] = []
@@ -710,7 +709,7 @@ def _write_drafts(layer: Layer, model: Model, catalog: catalog_mod.Catalog, answ
 
 def _counterpart_binding(layer: Layer, catalog: catalog_mod.Catalog, platform: str, other: str, other_dialect: str,
                          table: str, binding: dict[str, Any], nodes: list[exp.Expression],
-                         conditions: list[dict[str, Any]], item: dict[str, Any]) -> dict[str, Any] | None:
+                         conditions: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Propose the other platform's binding by migration map + transpile, then dry-run it."""
     other_table = catalog.other_side(platform, table)
     if not other_table:
@@ -747,7 +746,7 @@ def _counterpart_binding(layer: Layer, catalog: catalog_mod.Catalog, platform: s
     return proposal
 
 
-def _suggest_checks(item: dict[str, Any], probes: dict[str, Any], table: str, has_counterpart: bool) -> list[dict]:
+def _suggest_checks(item: dict[str, Any], has_counterpart: bool) -> list[dict]:
     key = item["key"]
     checks: list[dict[str, Any]] = [{"type": "nullValues", "column": key, "must_be": 0}]
     if item.get("time_column"):

@@ -477,8 +477,8 @@ def run(layer: Layer, spec: dict[str, Any], platform: str | None = None, execute
         answer["reconciliation"] = reconcile(model, spec, total, truncated)
         if answer["reconciliation"].get("anchor"):
             anchors_used.append(model.get(answer["reconciliation"]["anchor"]))
-        answer["provenance"] = provenance_card(layer, model, used + anchors_used)
-        answer["warnings"] += _warnings(model, used, chosen)
+        answer["provenance"] = provenance_card(layer, used + anchors_used)
+        answer["warnings"] += _warnings(used, chosen)
         answer["validation_plan"] = validation_plan(model, spec, answer)
         answer["ok"] = answer["lint"]["ok"] and dry.ok
         if not answer["lint"]["ok"]:
@@ -495,7 +495,7 @@ def _health(layer: Layer) -> dict[str, Any]:
     return read_json(path).get("definitions", {}) if path.exists() else {}
 
 
-def provenance_card(layer: Layer, model: Model, used: list[Definition]) -> list[dict[str, Any]]:
+def provenance_card(layer: Layer, used: list[Definition]) -> list[dict[str, Any]]:
     health = _health(layer)
     seen: set[str] = set()
     card = []
@@ -517,7 +517,7 @@ def provenance_card(layer: Layer, model: Model, used: list[Definition]) -> list[
     return card
 
 
-def _warnings(model: Model, used: list[Definition], platform: str) -> list[str]:
+def _warnings(used: list[Definition], platform: str) -> list[str]:
     warnings: list[str] = []
     asked: set[str] = set()
     today = dt.date.today()
