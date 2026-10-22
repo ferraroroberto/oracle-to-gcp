@@ -17,7 +17,7 @@ Canonical instructions for AI coding agents in this repository. Claude Code read
 
 ## Verification (before declaring a task done)
 
-One pre-ship gate runs byte-compile, `ruff`, the semantic layer gate (`validate`, `build --check`, `eval`), and `pytest` (unit + headless e2e boot smoke test + `semantic_layer/tests`):
+One pre-ship gate runs byte-compile, `ruff`, the docs ratchet (`scripts/docs_ratchet.py`, vendored from project-scaffolding: fails when `README.md` passes 40 KiB or a doc gains a history marker beyond `.docs-ratchet-baseline.json`; `--update-baseline` after removing markers), the semantic layer gate (`validate`, `build --check`, `eval`), and `pytest` (unit + headless e2e boot smoke test + `semantic_layer/tests`):
 
 ```powershell
 & .\scripts\verify-before-ship.ps1
