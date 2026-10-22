@@ -11,3 +11,18 @@ display_name = "Oracle to GCP"
 layer        = "working-pipe"
 icon         = "☁️"
 description  = "Oracle SQL → BigQuery translator prototype with mock validation."
+
+# Vendored byte-for-byte from project-scaffolding. sha = the source repo commit
+# the copy was taken from; /propagate-vendored hash-verifies + bumps.
+[vendored]
+docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "fdb750461997c4a13eacea8091f115ff12bba564", dest = "scripts/docs_ratchet.py" }
+
+# [docs_ratchet] -- the scaffold's docs ratchet. The gate (scripts/verify-before-ship.ps1)
+# runs scripts/docs_ratchet.py through scripts/docs_ratchet_gate.py, which fails when
+# README.md grows past 40 KiB or when README.md / docs/**/*.md gains a history marker
+# (issue reference, dated or changelog heading) beyond .docs-ratchet-baseline.json. A
+# check that cannot run (exit 3) is NOT CONFIRMED and fails, never a pass. Mechanism +
+# limits: project-scaffolding docs/docs-ratchet.md.
+[docs_ratchet]
+enabled  = true
+baseline = ".docs-ratchet-baseline.json"

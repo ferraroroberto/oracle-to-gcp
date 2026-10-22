@@ -9,9 +9,14 @@
     Stages:
       1. byte-compile    — every .py under app/ src/ tests/ semantic_layer/ parses
       2. ruff            — lint the whole repo (ruff defaults + pyupgrade)
-      3. semantic layer  — definitions validate, generated build/ is current,
+      3. docs ratchet    — README.md within 40 KiB and no new history marker (issue
+                           reference, dated or changelog heading) in README.md or
+                           docs/**/*.md beyond .docs-ratchet-baseline.json. Whole
+                           tree, never routed; exit 3 (count not established) is
+                           NOT CONFIRMED and fails, never a pass or a skip.
+      4. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
-      4. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
+      5. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
                            including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
@@ -45,6 +50,9 @@ function Invoke-Stage {
 
 Invoke-Stage "byte-compile"                       { & $py -m compileall -q app src tests semantic_layer }
 Invoke-Stage "ruff"                               { & $py -m ruff check . }
+# The wrapper maps the script's exit 3 to NOT CONFIRMED (tests/test_docs_ratchet_gate.py
+# pins it); call it, never scripts/docs_ratchet.py directly.
+Invoke-Stage "docs ratchet"                       { & $py -m scripts.docs_ratchet_gate }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
