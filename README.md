@@ -273,7 +273,7 @@ It runs on two DuckDB mock warehouses (legacy Oracle-shaped, cloud BigQuery-shap
 
 ## Shared Fleet-Wide GCP IO Helpers
 
-`src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume, per the consolidation tracked in issue #17. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
+`src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume instead of hand-rolling their own. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
 
 - `gcs_io.py` — `upload_file`, `upload_string`, `download_file`, `download_bytes`, `download_prefix`, all operating on `gs://bucket/path` URIs.
 - `bigquery_io.py` — `run_query` (parameterized query execution), `execute_script` (multi-statement scripts), `fetch_table_schema`, `load_dataframe`, and `compare_dataframe_schema` (schema-compatibility checks with type coercion for loading a DataFrame into an existing BigQuery table).

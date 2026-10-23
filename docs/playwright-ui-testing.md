@@ -292,7 +292,7 @@ def _bound_default_timeouts(context) -> None:
 
 `expect()` web-first assertions carry their own 5 s default — leave them alone. An explicit `timeout=` on any single call still overrides. Widen for a slow hosted CI runner without a code change: set `E2E_DEFAULT_TIMEOUT_MS=20000` in the workflow env.
 
-**Origin:** app-launcher#186 (a ~120 s CI e2e hang, opaque, never named) surfaced the cost of the implicit 30 s default; the convention landed in app-launcher PR #189. whatsapp-radar already sets an explicit `page.set_default_timeout` with a 30 s × scale-factor variant (`_scaled_page_timeouts`) — satisfies the spirit. The **15 s bounded base is the fleet standard** across all sister repos.
+**Why 15 s:** a generous or implicit default timeout turns a hung step into an opaque, multi-minute CI wait with no indication of where the time went; a bounded default fails fast and points at the right test. whatsapp-radar already sets an explicit `page.set_default_timeout` with a 30 s × scale-factor variant (`_scaled_page_timeouts`) — satisfies the spirit. The **15 s bounded base is the fleet standard** across all sister repos.
 
 ### Running it
 
@@ -309,7 +309,7 @@ POSIX:
 ### Rules
 
 - **Keep it small.** Target < 15 tests total. If I'm tempted to add
-  #20, delete two first.
+  a 20th, delete two first.
 - **No Page Object Model.** Too much ceremony at this scale.
 - **One shared fixture.** Don't build a framework until I have three
   tests that need the same helper.
