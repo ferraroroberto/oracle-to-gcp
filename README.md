@@ -183,13 +183,13 @@ The repository also includes an experimental, config-driven schema audit module 
 The default config template lives at:
 
 ```text
-unit_test/schema_audit_config.json
+tests/audits/schema_audit_config.json
 ```
 
 Run it with:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m unit_test.schema_compatibility_audit --config unit_test\schema_audit_config.json
+& .\.venv\Scripts\python.exe -m tests.audits.schema_compatibility_audit --config tests\audits\schema_audit_config.json
 ```
 
 By default the production adapters expect Oracle credentials in `ORACLE_USERNAME`, `ORACLE_PASSWORD`, and `ORACLE_DSN`, plus Google Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS` for BigQuery. Excel input uses `pandas` and `openpyxl`. The module also ships SQLite adapters for local experiments and tests. Metadata is the source of truth; optional row sampling is recorded only as evidence in the output reports and does not drive compatibility decisions.
@@ -208,13 +208,13 @@ A second experimental, config-driven module runs *after* a run's translated stat
 The default config template lives at:
 
 ```text
-unit_test/query_cost_audit_config.json
+tests/audits/query_cost_audit_config.json
 ```
 
 Run it against a completed run's report with:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m unit_test.query_cost_audit --config unit_test\query_cost_audit_config.json
+& .\.venv\Scripts\python.exe -m tests.audits.query_cost_audit --config tests\audits\query_cost_audit_config.json
 ```
 
 Two estimator modes are supported in `estimator.mode`:
@@ -239,13 +239,13 @@ The full per-iteration history (candidate SQL, estimated cost, accept/reject dec
 The default config template lives at:
 
 ```text
-unit_test/query_optimization_loop_config.json
+tests/audits/query_optimization_loop_config.json
 ```
 
 Run it against a completed run's report with:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m unit_test.query_optimization_loop --config unit_test\query_optimization_loop_config.json
+& .\.venv\Scripts\python.exe -m tests.audits.query_optimization_loop --config tests\audits\query_optimization_loop_config.json
 ```
 
 It reuses the query cost audit's `estimator.mode` (`mock` / `bigquery`) and adds an `executor.mode`, the source of each candidate's materialized result rows for the correctness gate:
@@ -306,7 +306,7 @@ src/
   translator.py                  Bounded translation function
   validation.py                  Dual execution and fingerprints
   pipelines/oracle_to_bigquery.py End-to-end orchestrator
-unit_test/
+tests/audits/
   schema_compatibility_audit.py   Standalone Oracle/BQ schema audit experiment
   schema_audit_config.json        Config template for the schema audit
   query_cost_audit.py             Standalone post-migration query cost audit

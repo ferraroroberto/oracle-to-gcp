@@ -17,7 +17,7 @@ description  = "Oracle SQL → BigQuery translator prototype with mock validatio
 # scripts/structure_ratchet.py; ids and presets: project-scaffolding
 # docs/structure-ratchet.md.
 shape       = "streamlit"
-extra_roots = ["config", "examples", "semantic_layer", "unit_test"]
+extra_roots = ["config", "examples", "semantic_layer"]
 
 # Vendored byte-for-byte from project-scaffolding. sha = the source repo commit
 # the copy was taken from; /propagate-vendored hash-verifies + bumps.

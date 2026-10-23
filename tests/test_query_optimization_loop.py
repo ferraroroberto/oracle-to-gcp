@@ -7,8 +7,8 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from unit_test.query_cost_audit import BYTES_PER_TIB, QueryInput
-from unit_test.query_optimization_loop import optimize_query, run_optimization
+from tests.audits.query_cost_audit import BYTES_PER_TIB, QueryInput
+from tests.audits.query_optimization_loop import optimize_query, run_optimization
 
 
 @dataclass(slots=True)

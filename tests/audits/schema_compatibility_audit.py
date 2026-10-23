@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.sql_processing import type_family
-from unit_test._common import configure_logging as _configure_logging
-from unit_test._common import load_json as _load_json
+from tests.audits._common import configure_logging as _configure_logging
+from tests.audits._common import load_json as _load_json
 
 log = logging.getLogger("schema_compatibility_audit")
 

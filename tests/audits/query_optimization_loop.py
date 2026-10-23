@@ -24,9 +24,9 @@ from typing import Any, Protocol
 
 from src.llm_client import LocalHubClient, _strip_sql_fence
 from src.validation import compare_fingerprints
-from unit_test._common import configure_logging as _configure_logging
-from unit_test._common import load_json as _load_json
-from unit_test.query_cost_audit import (
+from tests.audits._common import configure_logging as _configure_logging
+from tests.audits._common import load_json as _load_json
+from tests.audits.query_cost_audit import (
     BYTES_PER_TIB,
     CostEstimator,
     QueryInput,

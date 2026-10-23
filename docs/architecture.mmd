@@ -71,7 +71,7 @@ flowchart TB
   TRACE --> ARTIFACTS
   LINEAGE --> ARTIFACTS
 
-  subgraph standalone["unit_test/ — standalone production-shaped experiments (not wired into RUN)"]
+  subgraph standalone["tests/audits/ — standalone production-shaped experiments (not wired into RUN)"]
     AUDIT["schema_compatibility_audit.py\nCSV/JSON/Excel table pairs -> column diff"]
     COSTAUDIT["query_cost_audit.py\npost-validation run_report.units -> ranked cost + LLM suggestions"]
     OPTLOOP["query_optimization_loop.py\nbounded LLM rewrite loop, gated each\niteration by validation.compare_fingerprints"]
