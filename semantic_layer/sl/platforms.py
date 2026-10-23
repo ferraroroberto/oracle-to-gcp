@@ -7,7 +7,7 @@ never needs them installed. **Porting = switching ``config.json`` adapters**,
 not rewriting callers.
 
 The real adapters' metadata queries follow the idioms of this repo's
-``unit_test/schema_compatibility_audit.py`` (``ALL_TAB_COLUMNS`` for Oracle,
+``tests/audits/schema_compatibility_audit.py`` (``ALL_TAB_COLUMNS`` for Oracle,
 ``INFORMATION_SCHEMA.COLUMNS`` for BigQuery), copied rather than imported so
 ``semantic_layer/`` stays self-contained.
 

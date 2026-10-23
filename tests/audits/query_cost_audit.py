@@ -22,8 +22,8 @@ from typing import Any, Protocol
 
 from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS
 from src.llm_client import LocalHubClient
-from unit_test._common import configure_logging as _configure_logging
-from unit_test._common import load_json as _load_json
+from tests.audits._common import configure_logging as _configure_logging
+from tests.audits._common import load_json as _load_json
 
 log = logging.getLogger("query_cost_audit")
 

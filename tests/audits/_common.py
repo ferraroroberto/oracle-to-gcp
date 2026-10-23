@@ -1,4 +1,4 @@
-"""Shared boilerplate for the standalone ``unit_test/`` audit modules.
+"""Shared boilerplate for the standalone ``tests/audits/`` audit modules.
 
 ``schema_compatibility_audit.py``, ``query_cost_audit.py``, and
 ``query_optimization_loop.py`` are each invoked as independent CLI scripts,

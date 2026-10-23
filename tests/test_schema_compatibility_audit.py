@@ -7,7 +7,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from unit_test.schema_compatibility_audit import run_audit
+from tests.audits.schema_compatibility_audit import run_audit
 
 
 def test_schema_audit_writes_column_and_table_reports(tmp_path: Path) -> None:

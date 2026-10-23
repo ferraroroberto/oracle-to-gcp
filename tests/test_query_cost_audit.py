@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from unit_test.query_cost_audit import run_audit
+from tests.audits.query_cost_audit import run_audit
 
 
 @dataclass(slots=True)
@@ -148,7 +148,7 @@ def test_query_cost_audit_records_estimator_errors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    import unit_test.query_cost_audit as module
+    import tests.audits.query_cost_audit as module
 
     original_build_estimator = module.build_estimator
     module.build_estimator = lambda config: _BrokenEstimator()

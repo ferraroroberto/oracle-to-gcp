@@ -2,7 +2,7 @@
 
 Real (non-mock) GCP client wiring. ``google-cloud-bigquery`` is imported
 lazily inside each function so the mock pipeline never requires it to be
-installed — same convention as ``unit_test/schema_compatibility_audit.py``'s
+installed — same convention as ``tests/audits/schema_compatibility_audit.py``'s
 Oracle/BigQuery metadata adapters. Consolidates query-execution and
 schema/dtype-coercion logic previously duplicated across sibling fleet repos
 (see issue #17).
