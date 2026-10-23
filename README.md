@@ -282,6 +282,8 @@ Sibling repos consume these by vendoring (byte-copying) the module with a proven
 
 ## Layout
 
+Where new code goes, and why each root folder exists: [`docs/layout.md`](docs/layout.md).
+
 ```text
 app/
   app.py                         Streamlit entry point

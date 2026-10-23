@@ -14,9 +14,14 @@
                            docs/**/*.md beyond .docs-ratchet-baseline.json. Whole
                            tree, never routed; exit 3 (count not established) is
                            NOT CONFIRMED and fails, never a pass or a skip.
-      4. semantic layer  — definitions validate, generated build/ is current,
+      4. structure ratchet — no file over 1,000 lines, function over 100 lines,
+                           directory past 40 modules, src -> app import or root
+                           folder outside .fleet.toml shape + extra_roots,
+                           beyond .structure-ratchet-baseline.json. Exit 3 (not
+                           confirmed) fails like any non-zero exit.
+      5. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
-      5. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
+      6. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
                            including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
@@ -53,6 +58,9 @@ Invoke-Stage "ruff"                               { & $py -m ruff check . }
 # The wrapper maps the script's exit 3 to NOT CONFIRMED (tests/test_docs_ratchet_gate.py
 # pins it); call it, never scripts/docs_ratchet.py directly.
 Invoke-Stage "docs ratchet"                       { & $py -m scripts.docs_ratchet_gate }
+# Invoke-Stage fails on any non-zero exit, so the script's exit 3 (NOT CONFIRMED)
+# fails the gate instead of passing.
+Invoke-Stage "structure ratchet"                  { & $py scripts/structure_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }

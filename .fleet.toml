@@ -12,10 +12,18 @@ layer        = "working-pipe"
 icon         = "☁️"
 description  = "Oracle SQL → BigQuery translator prototype with mock validation."
 
+# Which canonical tree the root layout is held to (project-scaffolding
+# docs/repo-layout.md). Each extra root and its reason: docs/layout.md. Read by
+# scripts/structure_ratchet.py; ids and presets: project-scaffolding
+# docs/structure-ratchet.md.
+shape       = "streamlit"
+extra_roots = ["config", "examples", "semantic_layer", "unit_test"]
+
 # Vendored byte-for-byte from project-scaffolding. sha = the source repo commit
 # the copy was taken from; /propagate-vendored hash-verifies + bumps.
 [vendored]
 docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "fdb750461997c4a13eacea8091f115ff12bba564", dest = "scripts/docs_ratchet.py" }
+structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab416551762e4a615e4a706df91cea69f", dest = "scripts/structure_ratchet.py" }
 
 # [docs_ratchet] -- the scaffold's docs ratchet. The gate (scripts/verify-before-ship.ps1)
 # runs scripts/docs_ratchet.py through scripts/docs_ratchet_gate.py, which fails when
@@ -26,3 +34,14 @@ docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "fdb750461997c4a13eacea8
 [docs_ratchet]
 enabled  = true
 baseline = ".docs-ratchet-baseline.json"
+
+# [structure_ratchet] -- the scaffold's structure ratchet. The gate
+# (scripts/verify-before-ship.ps1) runs scripts/structure_ratchet.py, which fails when
+# a file passes 1,000 lines, a Python/JS function 100 lines, a directory 40 modules, a
+# src/ module imports app/, or a root folder falls outside `shape` + `extra_roots`,
+# beyond .structure-ratchet-baseline.json. A check that cannot run (exit 3) is NOT
+# CONFIRMED and fails, never a pass. Mechanism + limits: project-scaffolding
+# docs/structure-ratchet.md.
+[structure_ratchet]
+enabled  = true
+baseline = ".structure-ratchet-baseline.json"
