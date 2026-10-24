@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "entries": [
+    {"key": "app/log_panel.py", "names": ["render_log_panel"]},
+    {"key": "semantic_layer/sl/common.py", "names": ["parse_date"]},
+    {"key": "src/table_registry.py", "names": ["mapping_dict"]}
+  ]
+}
