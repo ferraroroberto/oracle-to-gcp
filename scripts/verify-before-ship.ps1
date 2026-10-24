@@ -19,9 +19,13 @@
                            folder outside .fleet.toml shape + extra_roots,
                            beyond .structure-ratchet-baseline.json. Exit 3 (not
                            confirmed) fails like any non-zero exit.
-      5. semantic layer  — definitions validate, generated build/ is current,
+      5. instruction ratchet — no rise in a prompt-audit rule hit count in CLAUDE.md /
+                           AGENTS.md beyond .instruction-ratchet-baseline.json, and
+                           no instruction file past its size cap. Whole tree, never
+                           routed; exit 3 (not confirmed) fails like any non-zero exit.
+      6. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
-      6. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
+      7. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
                            including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
@@ -61,6 +65,7 @@ Invoke-Stage "docs ratchet"                       { & $py -m scripts.docs_ratche
 # Invoke-Stage fails on any non-zero exit, so the script's exit 3 (NOT CONFIRMED)
 # fails the gate instead of passing.
 Invoke-Stage "structure ratchet"                  { & $py scripts/structure_ratchet.py }
+Invoke-Stage "instruction ratchet"                { & $py scripts/instruction_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
