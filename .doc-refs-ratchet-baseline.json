@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "entries": [
+    {"key": "docs/playwright-ui-testing.md", "refs": ["docs/agents/CLAUDE.master.md"]}
+  ]
+}
