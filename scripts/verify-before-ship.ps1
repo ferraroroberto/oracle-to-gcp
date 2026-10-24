@@ -23,9 +23,13 @@
                            AGENTS.md beyond .instruction-ratchet-baseline.json, and
                            no instruction file past its size cap. Whole tree, never
                            routed; exit 3 (not confirmed) fails like any non-zero exit.
-      6. semantic layer  — definitions validate, generated build/ is current,
+      6. doc-refs ratchet — no README.md / CLAUDE.md / docs/**/*.md reference to a repo
+                           path, python -m module or relative link that does not exist,
+                           beyond .doc-refs-ratchet-baseline.json. Whole tree, never
+                           routed; exit 3 (not confirmed) fails like any non-zero exit.
+      7. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
-      7. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
+      8. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
                            including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
@@ -66,6 +70,7 @@ Invoke-Stage "docs ratchet"                       { & $py -m scripts.docs_ratche
 # fails the gate instead of passing.
 Invoke-Stage "structure ratchet"                  { & $py scripts/structure_ratchet.py }
 Invoke-Stage "instruction ratchet"                { & $py scripts/instruction_ratchet.py }
+Invoke-Stage "doc-refs ratchet"                   { & $py scripts/doc_refs_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
