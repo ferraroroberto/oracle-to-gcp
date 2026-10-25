@@ -152,17 +152,6 @@ def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def parse_date(value: Any) -> dt.date | None:
-    """Coerce a YAML date / ISO string / datetime into a ``date``; ``None`` if absent."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, dt.datetime):
-        return value.date()
-    if isinstance(value, dt.date):
-        return value
-    return dt.date.fromisoformat(str(value))
-
-
 def resolve_today(value: str | None) -> dt.date:
     """``--today`` override for reproducible checks; defaults to the real date."""
     return dt.date.fromisoformat(value) if value else dt.date.today()

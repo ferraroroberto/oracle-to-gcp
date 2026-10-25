@@ -1,7 +1,7 @@
 """Streamlit-side log panel helpers.
 
 Paints the in-memory ring buffer maintained by ``src.logger`` into a live
-(``stream_to_streamlit``) or one-shot (``render_log_panel``) panel. This is
+(``stream_to_streamlit``) panel. This is
 UI code, so it lives here rather than in ``src/logger.py`` — non-UI code
 must never import ``streamlit``.
 
@@ -89,13 +89,3 @@ def stream_to_streamlit(
         raise error[0]
     return result[0]
 
-
-def render_log_panel(
-    title: str = "Recent log",
-    tail: int = 200,
-) -> None:
-    """One-shot panel showing the last ``tail`` log lines."""
-    lines = get_log_buffer()[-tail:]
-    body = "\n".join(lines) if lines else "(no log entries yet)"
-    st.markdown(f"**{title}**")
-    st.code(body, language="log")

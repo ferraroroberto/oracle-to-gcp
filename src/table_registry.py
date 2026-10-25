@@ -256,11 +256,6 @@ def update_reachability(
     return mapping
 
 
-def mapping_dict(path: str | Path | None = None) -> dict[str, str]:
-    """Return ready source-to-target table mappings for the translator."""
-    return {row.oracle_table: row.bigquery_table for row in list_mappings(path) if row.ready}
-
-
 def replace_column_mappings(
     table_mapping: TableMapping,
     columns: list[ColumnMapping],
