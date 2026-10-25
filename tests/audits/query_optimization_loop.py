@@ -183,19 +183,53 @@ def run_optimization(
     return results
 
 
-def optimize_query(
+def _rejected_iteration(
+    iteration: int,
+    sql: str,
+    estimated_bytes: int,
+    estimated_cost_usd: float,
+    note: str,
+    validation_matched: bool | None = None,
+) -> OptimizationIteration:
+    return OptimizationIteration(
+        iteration=iteration,
+        sql=sql,
+        estimated_bytes_processed=estimated_bytes,
+        estimated_cost_usd=estimated_cost_usd,
+        accepted=False,
+        validation_matched=validation_matched,
+        marginal_improvement_pct=None,
+        note=note,
+    )
+
+
+def _build_result(
     query: QueryInput,
     *,
-    estimator: CostEstimator,
-    executor: QueryExecutor,
-    price_per_tib: float,
-    llm_client: LocalHubClient | None,
-    llm_config: dict[str, Any],
-    max_iterations: int,
-    min_improvement_pct: float,
-    diminishing_returns_streak: int,
+    baseline_cost: float,
+    final_cost: float,
+    final_sql: str,
+    stop_reason: str,
+    iterations: list[OptimizationIteration],
 ) -> QueryOptimizationResult:
-    """Run the bounded optimize-execute-validate loop for one query."""
+    total_improvement_pct = ((baseline_cost - final_cost) / baseline_cost * 100) if baseline_cost > 0 else 0.0
+    return QueryOptimizationResult(
+        query_id=query.query_id,
+        order=query.order,
+        statement_type=query.statement_type,
+        baseline_cost_usd=baseline_cost,
+        final_cost_usd=final_cost,
+        final_sql=final_sql,
+        total_improvement_pct=round(total_improvement_pct, 4),
+        stop_reason=stop_reason,
+        iterations=iterations,
+    )
+
+
+def _measure_baseline(
+    query: QueryInput, estimator: CostEstimator, executor: QueryExecutor, price_per_tib: float
+) -> tuple[OptimizationIteration, list[dict[str, Any]], str]:
+    """Estimate and execute the original query; return its iteration 0, result rows and execution error."""
     baseline_bytes, estimate_error = _safe_estimate(estimator, query.sql)
     baseline_cost = _cost_usd(baseline_bytes, price_per_tib)
     try:
@@ -211,28 +245,110 @@ def optimize_query(
         note += f" (estimate error: {estimate_error})"
     if execution_error:
         note += f" (execution error: {execution_error})"
-    iterations = [
-        OptimizationIteration(
-            iteration=0,
-            sql=query.sql,
-            estimated_bytes_processed=baseline_bytes,
-            estimated_cost_usd=baseline_cost,
-            accepted=True,
-            validation_matched=None,
-            marginal_improvement_pct=None,
-            note=note,
+    baseline = OptimizationIteration(
+        iteration=0,
+        sql=query.sql,
+        estimated_bytes_processed=baseline_bytes,
+        estimated_cost_usd=baseline_cost,
+        accepted=True,
+        validation_matched=None,
+        marginal_improvement_pct=None,
+        note=note,
+    )
+    return baseline, baseline_rows, execution_error
+
+
+@dataclass(slots=True)
+class _CandidateOutcome:
+    """A candidate's iteration record, plus why the loop must stop (empty when it can go on)."""
+
+    iteration: OptimizationIteration
+    stop_reason: str
+    rows: list[dict[str, Any]]
+    marginal_improvement_pct: float
+
+
+def _evaluate_candidate(
+    query: QueryInput,
+    iteration: int,
+    candidate_sql: str,
+    *,
+    estimator: CostEstimator,
+    executor: QueryExecutor,
+    price_per_tib: float,
+    current_rows: list[dict[str, Any]],
+    current_cost: float,
+) -> _CandidateOutcome:
+    """Estimate, execute and fingerprint-validate one candidate against the last accepted result set."""
+    candidate_bytes, estimate_error = _safe_estimate(estimator, candidate_sql)
+    if estimate_error:
+        rejected = _rejected_iteration(iteration, candidate_sql, 0, 0.0, f"estimate_error: {estimate_error}")
+        return _CandidateOutcome(rejected, "estimate_failed", [], 0.0)
+    candidate_cost = _cost_usd(candidate_bytes, price_per_tib)
+
+    try:
+        candidate_rows = executor.execute(candidate_sql)
+        execution_error = ""
+    except Exception as exc:
+        log.exception("Candidate execution failed for query id=%d attempt=%d", query.query_id, iteration)
+        candidate_rows = []
+        execution_error = f"{type(exc).__name__}: {exc}"
+    if execution_error:
+        rejected = _rejected_iteration(
+            iteration, candidate_sql, candidate_bytes, candidate_cost, f"execution_error: {execution_error}"
         )
-    ]
+        return _CandidateOutcome(rejected, "execution_failed", [], 0.0)
+
+    validation = compare_fingerprints(current_rows, candidate_rows)
+    if not validation["matched"]:
+        rejected = _rejected_iteration(
+            iteration,
+            candidate_sql,
+            candidate_bytes,
+            candidate_cost,
+            f"validation_failed: {'; '.join(validation['diffs'])}",
+            validation_matched=False,
+        )
+        return _CandidateOutcome(rejected, "validation_failed", [], 0.0)
+
+    marginal_improvement_pct = ((current_cost - candidate_cost) / current_cost * 100) if current_cost > 0 else 0.0
+    accepted = candidate_cost < current_cost
+    evaluated = OptimizationIteration(
+        iteration=iteration,
+        sql=candidate_sql,
+        estimated_bytes_processed=candidate_bytes,
+        estimated_cost_usd=candidate_cost,
+        accepted=accepted,
+        validation_matched=True,
+        marginal_improvement_pct=round(marginal_improvement_pct, 4),
+        note="accepted" if accepted else "no_cost_improvement",
+    )
+    return _CandidateOutcome(evaluated, "", candidate_rows, marginal_improvement_pct)
+
+
+def optimize_query(
+    query: QueryInput,
+    *,
+    estimator: CostEstimator,
+    executor: QueryExecutor,
+    price_per_tib: float,
+    llm_client: LocalHubClient | None,
+    llm_config: dict[str, Any],
+    max_iterations: int,
+    min_improvement_pct: float,
+    diminishing_returns_streak: int,
+) -> QueryOptimizationResult:
+    """Run the bounded optimize-execute-validate loop for one query."""
+    baseline, baseline_rows, execution_error = _measure_baseline(query, estimator, executor, price_per_tib)
+    baseline_cost = baseline.estimated_cost_usd
+    iterations = [baseline]
 
     if execution_error:
-        return QueryOptimizationResult(
-            query_id=query.query_id,
-            order=query.order,
-            statement_type=query.statement_type,
-            baseline_cost_usd=baseline_cost,
-            final_cost_usd=baseline_cost,
+        return _build_result(
+            query,
+            baseline_cost=baseline_cost,
+            final_cost=baseline_cost,
             final_sql=query.sql,
-            total_improvement_pct=0.0,
             stop_reason="baseline_execution_failed",
             iterations=iterations,
         )
@@ -253,95 +369,28 @@ def optimize_query(
         )
         candidate_sql = _strip_sql_fence(response.text).strip() if not response.error else ""
         if response.error or not candidate_sql:
-            iterations.append(
-                OptimizationIteration(
-                    iteration=iteration,
-                    sql="",
-                    estimated_bytes_processed=0,
-                    estimated_cost_usd=0.0,
-                    accepted=False,
-                    validation_matched=None,
-                    marginal_improvement_pct=None,
-                    note=f"llm_error: {response.error or 'empty response'}",
-                )
-            )
+            note = f"llm_error: {response.error or 'empty response'}"
+            iterations.append(_rejected_iteration(iteration, "", 0, 0.0, note))
             stop_reason = "llm_error"
             break
 
-        candidate_bytes, estimate_error = _safe_estimate(estimator, candidate_sql)
-        if estimate_error:
-            iterations.append(
-                OptimizationIteration(
-                    iteration=iteration,
-                    sql=candidate_sql,
-                    estimated_bytes_processed=0,
-                    estimated_cost_usd=0.0,
-                    accepted=False,
-                    validation_matched=None,
-                    marginal_improvement_pct=None,
-                    note=f"estimate_error: {estimate_error}",
-                )
-            )
-            stop_reason = "estimate_failed"
-            break
-        candidate_cost = _cost_usd(candidate_bytes, price_per_tib)
-
-        try:
-            candidate_rows = executor.execute(candidate_sql)
-            execution_error = ""
-        except Exception as exc:
-            log.exception("Candidate execution failed for query id=%d attempt=%d", query.query_id, iteration)
-            candidate_rows = []
-            execution_error = f"{type(exc).__name__}: {exc}"
-        if execution_error:
-            iterations.append(
-                OptimizationIteration(
-                    iteration=iteration,
-                    sql=candidate_sql,
-                    estimated_bytes_processed=candidate_bytes,
-                    estimated_cost_usd=candidate_cost,
-                    accepted=False,
-                    validation_matched=None,
-                    marginal_improvement_pct=None,
-                    note=f"execution_error: {execution_error}",
-                )
-            )
-            stop_reason = "execution_failed"
-            break
-
-        validation = compare_fingerprints(current_rows, candidate_rows)
-        if not validation["matched"]:
-            iterations.append(
-                OptimizationIteration(
-                    iteration=iteration,
-                    sql=candidate_sql,
-                    estimated_bytes_processed=candidate_bytes,
-                    estimated_cost_usd=candidate_cost,
-                    accepted=False,
-                    validation_matched=False,
-                    marginal_improvement_pct=None,
-                    note=f"validation_failed: {'; '.join(validation['diffs'])}",
-                )
-            )
-            stop_reason = "validation_failed"
-            break
-
-        marginal_improvement_pct = ((current_cost - candidate_cost) / current_cost * 100) if current_cost > 0 else 0.0
-        accepted = candidate_cost < current_cost
-        iterations.append(
-            OptimizationIteration(
-                iteration=iteration,
-                sql=candidate_sql,
-                estimated_bytes_processed=candidate_bytes,
-                estimated_cost_usd=candidate_cost,
-                accepted=accepted,
-                validation_matched=True,
-                marginal_improvement_pct=round(marginal_improvement_pct, 4),
-                note="accepted" if accepted else "no_cost_improvement",
-            )
+        outcome = _evaluate_candidate(
+            query,
+            iteration,
+            candidate_sql,
+            estimator=estimator,
+            executor=executor,
+            price_per_tib=price_per_tib,
+            current_rows=current_rows,
+            current_cost=current_cost,
         )
-        if accepted:
-            current_sql, current_cost, current_rows = candidate_sql, candidate_cost, candidate_rows
+        iterations.append(outcome.iteration)
+        if outcome.stop_reason:
+            stop_reason = outcome.stop_reason
+            break
+        if outcome.iteration.accepted:
+            current_sql, current_cost, current_rows = candidate_sql, outcome.iteration.estimated_cost_usd, outcome.rows
+        marginal_improvement_pct = outcome.marginal_improvement_pct
 
         if marginal_improvement_pct < min_improvement_pct:
             flat_streak += 1
@@ -353,15 +402,11 @@ def optimize_query(
     else:
         stop_reason = "max_iterations"
 
-    total_improvement_pct = ((baseline_cost - current_cost) / baseline_cost * 100) if baseline_cost > 0 else 0.0
-    return QueryOptimizationResult(
-        query_id=query.query_id,
-        order=query.order,
-        statement_type=query.statement_type,
-        baseline_cost_usd=baseline_cost,
-        final_cost_usd=current_cost,
+    return _build_result(
+        query,
+        baseline_cost=baseline_cost,
+        final_cost=current_cost,
         final_sql=current_sql,
-        total_improvement_pct=round(total_improvement_pct, 4),
         stop_reason=stop_reason,
         iterations=iterations,
     )
