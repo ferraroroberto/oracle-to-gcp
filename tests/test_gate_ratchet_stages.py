@@ -13,7 +13,7 @@ import pytest
 
 GATE = Path(__file__).resolve().parents[1] / "scripts" / "verify-before-ship.ps1"
 
-DIRECT_STAGES = ["static_ratchet"]
+DIRECT_STAGES = ["static_ratchet", "comment_ratchet"]
 
 
 @pytest.fixture(scope="module")
