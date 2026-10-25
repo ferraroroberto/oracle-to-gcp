@@ -500,6 +500,154 @@ def _main_alias_for_cte(sql: str, cte_name: str, dialect: str) -> str | None:
     return None
 
 
+@dataclass
+class _DraftContext:
+    """What every definition kind needs while :func:`draft` turns answers into records."""
+
+    layer: Layer
+    catalog: Any
+    model: Model
+    facts: dict[str, Any]
+    sql: str
+    platform: str
+    other: str
+    dialect: str
+    other_dialect: str
+    team: str
+    steward: str
+    provenance: dict[str, Any]
+
+
+def _base_record(ctx: _DraftContext, item: dict[str, Any], kind: str) -> dict[str, Any]:
+    record: dict[str, Any] = {"id": item["id"], "kind": kind, "name": item["name"]}
+    for key in ("description", "synonyms", "grain", "not_to_be_confused_with", "caveats", "ai_context"):
+        if item.get(key):
+            record[key] = item[key]
+    record["owner"] = {"team": item.get("team", ctx.team), "steward": item.get("steward", ctx.steward)}
+    record["status"] = "draft"
+    record["version"] = 1
+    return record
+
+
+def _entity_drafts(ctx: _DraftContext, items: list[dict[str, Any]], entity_alias_main: dict[str, str],
+                   entity_tables: dict[str, tuple[str, str]]) -> list[dict[str, Any]]:
+    """Entity records; also fills the alias/table maps the relationship step reads."""
+    facts, platform, dialect = ctx.facts, ctx.platform, ctx.dialect
+    records: list[dict[str, Any]] = []
+    for item in items:
+        table, scope_alias = _entity_alias_scope(facts, item["from_alias"])
+        if table is None:
+            raise LayerError(f"Entity {item['id']}: alias '{item['from_alias']}' not found in the parse")
+        main_alias = _main_alias_for_cte(ctx.sql, item["from_alias"], dialect) or item["from_alias"]
+        entity_alias_main[item["id"]] = main_alias
+        entity_tables[item["id"]] = (table, scope_alias)
+        time_col = item.get("time_column")
+        conditions = [f for f in facts["filters"] if f.get("table") and catalog_mod.norm(f["table"]) ==
+                      catalog_mod.norm(table) and not (time_col and is_time_equality(f["canonical"], time_col.lower()))]
+        nodes = [sqlglot.parse_one(f"SELECT 1 WHERE {c['predicate']}", read=dialect).args["where"].this
+                 for c in conditions]
+        record = _base_record(ctx, item, "entity")
+        binding: dict[str, Any] = {"platform": platform, "source": table, "key": item["key"]}
+        if time_col:
+            binding["time_column"] = time_col
+        if nodes:
+            binding["filter"] = " AND ".join(
+                _Placeholders.render(n, {c["alias"]: "{t}" for c in conditions if c["alias"]}, dialect) for n in nodes
+            )
+        binding["preferred"] = platform == "cloud"
+        binding["status"] = "active" if platform == "cloud" else "legacy"
+        record["bindings"] = [binding]
+        counterpart = _counterpart_binding(ctx.layer, ctx.catalog, platform, ctx.other, ctx.other_dialect, table,
+                                           binding, nodes, conditions)
+        if counterpart:
+            record["bindings"].append(counterpart)
+        record["checks"] = _suggest_checks(item, counterpart is not None)
+        if item.get("anchors"):
+            record["anchors"] = item["anchors"]
+        record["provenance"] = ctx.provenance
+        records.append(record)
+    return records
+
+
+def _dimension_drafts(ctx: _DraftContext, items: list[dict[str, Any]], entity_alias_main: dict[str, str],
+                      entity_tables: dict[str, tuple[str, str]]) -> list[dict[str, Any]]:
+    """Dimension records plus the relationship each one has to its entity."""
+    facts, platform, other, dialect, other_dialect = ctx.facts, ctx.platform, ctx.other, ctx.dialect, ctx.other_dialect
+    catalog = ctx.catalog
+    records: list[dict[str, Any]] = []
+    for item in items:
+        join = next((j for j in facts["joins"] if j["right_alias"] == item["from_join"] and j["scope"] == "main"), None)
+        if join is None:
+            raise LayerError(f"Dimension {item['id']}: join alias '{item['from_join']}' not found in the parse")
+        table = join["right_table"]
+        right_key = join["keys"][0]["right"] if join["keys"] else item.get("key")
+        column_map = catalog.column_map(platform, table)
+        other_table = catalog.other_side(platform, table)
+        if item.get("reuse"):
+            # An existing certified dimension: only the relationship is new.
+            existing = ctx.model.find(item["id"])
+            if existing is None:
+                raise LayerError(f"Dimension {item['id']} is marked reuse but does not exist yet")
+            item = {**item, "name": existing.data.get("name", item["id"])}
+        else:
+            records.append(_dimension_record(item, _base_record(ctx, item, "dimension"), facts, platform, other,
+                                             dialect, other_dialect, table, other_table, right_key, column_map,
+                                             ctx.provenance))
+
+        # The relationship comes straight from the join the query already uses.
+        entity_id = item.get("relates_to") or next(iter(entity_alias_main), None)
+        if entity_id is None:
+            continue
+        entity_alias = entity_alias_main[entity_id]
+        on_node = sqlglot.parse_one(f"SELECT 1 WHERE {join['condition']}", read=dialect).args["where"].this
+        entity_table, _ = entity_tables[entity_id]
+        joins = {platform: _Placeholders.render(on_node, {entity_alias: "{from}", item["from_join"]: "{to}"}, dialect)}
+        if other_table and catalog.other_side(platform, entity_table):
+            joins[other] = _Placeholders.render(
+                on_node, {entity_alias: "{from}", item["from_join"]: "{to}"}, other_dialect,
+                {entity_alias: catalog.column_map(platform, entity_table), item["from_join"]: column_map},
+            )
+        relationship = {
+            "id": f"rel.{entity_id.split('.', 1)[1]}__{item['id'].split('.', 1)[1]}",
+            "kind": "relationship",
+            "name": f"{item['name']} for {entity_id}",
+            "owner": {"team": ctx.team, "steward": ctx.steward},
+            "status": "draft",
+            "version": 1,
+            "from": entity_id,
+            "to": item["id"],
+            "join": joins,
+            "join_type": join["type"] if join["type"] in ("inner", "left") else "inner",
+            "cardinality": join.get("inferred_cardinality") or item.get("cardinality", "many_to_one"),
+            "provenance": ctx.provenance,
+        }
+        if join.get("inferred_cardinality"):
+            relationship["cardinality_evidence"] = "harvest probe: key uniqueness on both sides"
+        records.append(relationship)
+    return records
+
+
+def _metric_and_anchor_drafts(ctx: _DraftContext, answers: dict[str, Any]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for item in answers.get("metrics", []) or []:
+        record = _base_record(ctx, item, "metric")
+        record["expression"] = item["expression"]
+        record["applies_to"] = item["applies_to"]
+        record["additivity"] = item.get("additivity", "additive")
+        record["provenance"] = ctx.provenance
+        records.append(record)
+
+    for item in answers.get("anchors", []) or []:
+        record = _base_record(ctx, item, "anchor")
+        record["published_in"] = item["published_in"]
+        record["measures"] = item["measures"]
+        record["values"] = item["values"]
+        record["tolerance_pct"] = item.get("tolerance_pct", 0.5)
+        record["provenance"] = ctx.provenance
+        records.append(record)
+    return records
+
+
 def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
     """Merge parse facts + interview answers into draft definitions (status: draft)."""
     folder = session_dir(layer, session_id)
@@ -525,119 +673,13 @@ def draft(layer: Layer, session_id: str, overwrite: bool = False) -> list[Path]:
     if open_questions:
         provenance["open_questions"] = open_questions
 
-    def base(item: dict[str, Any], kind: str) -> dict[str, Any]:
-        record: dict[str, Any] = {"id": item["id"], "kind": kind, "name": item["name"]}
-        for key in ("description", "synonyms", "grain", "not_to_be_confused_with", "caveats", "ai_context"):
-            if item.get(key):
-                record[key] = item[key]
-        record["owner"] = {"team": item.get("team", team), "steward": item.get("steward", steward)}
-        record["status"] = "draft"
-        record["version"] = 1
-        return record
-
-    definitions: list[dict[str, Any]] = []
+    ctx = _DraftContext(layer, catalog, model, facts, sql, platform, other, dialect, other_dialect, team, steward,
+                        provenance)
     entity_alias_main: dict[str, str] = {}  # entity id → its alias in the main query
     entity_tables: dict[str, tuple[str, str]] = {}  # entity id → (table, alias in defining scope)
-
-    for item in answers.get("entities", []) or []:
-        table, scope_alias = _entity_alias_scope(facts, item["from_alias"])
-        if table is None:
-            raise LayerError(f"Entity {item['id']}: alias '{item['from_alias']}' not found in the parse")
-        main_alias = _main_alias_for_cte(sql, item["from_alias"], dialect) or item["from_alias"]
-        entity_alias_main[item["id"]] = main_alias
-        entity_tables[item["id"]] = (table, scope_alias)
-        time_col = item.get("time_column")
-        conditions = [f for f in facts["filters"] if f.get("table") and catalog_mod.norm(f["table"]) ==
-                      catalog_mod.norm(table) and not (time_col and is_time_equality(f["canonical"], time_col.lower()))]
-        nodes = [sqlglot.parse_one(f"SELECT 1 WHERE {c['predicate']}", read=dialect).args["where"].this
-                 for c in conditions]
-        record = base(item, "entity")
-        binding: dict[str, Any] = {"platform": platform, "source": table, "key": item["key"]}
-        if time_col:
-            binding["time_column"] = time_col
-        if nodes:
-            binding["filter"] = " AND ".join(
-                _Placeholders.render(n, {c["alias"]: "{t}" for c in conditions if c["alias"]}, dialect) for n in nodes
-            )
-        binding["preferred"] = platform == "cloud"
-        binding["status"] = "active" if platform == "cloud" else "legacy"
-        record["bindings"] = [binding]
-        counterpart = _counterpart_binding(layer, catalog, platform, other, other_dialect, table, binding,
-                                           nodes, conditions)
-        if counterpart:
-            record["bindings"].append(counterpart)
-        record["checks"] = _suggest_checks(item, counterpart is not None)
-        if item.get("anchors"):
-            record["anchors"] = item["anchors"]
-        record["provenance"] = provenance
-        definitions.append(record)
-
-    for item in answers.get("dimensions", []) or []:
-        join = next((j for j in facts["joins"] if j["right_alias"] == item["from_join"] and j["scope"] == "main"), None)
-        if join is None:
-            raise LayerError(f"Dimension {item['id']}: join alias '{item['from_join']}' not found in the parse")
-        table = join["right_table"]
-        right_key = join["keys"][0]["right"] if join["keys"] else item.get("key")
-        column_map = catalog.column_map(platform, table)
-        other_table = catalog.other_side(platform, table)
-        if item.get("reuse"):
-            # An existing certified dimension: only the relationship is new.
-            existing = model.find(item["id"])
-            if existing is None:
-                raise LayerError(f"Dimension {item['id']} is marked reuse but does not exist yet")
-            item = {**item, "name": existing.data.get("name", item["id"])}
-        else:
-            definitions.append(_dimension_record(item, base(item, "dimension"), facts, platform, other, dialect,
-                                                 other_dialect, table, other_table, right_key, column_map,
-                                                 provenance))
-
-        # The relationship comes straight from the join the query already uses.
-        entity_id = item.get("relates_to") or next(iter(entity_alias_main), None)
-        if entity_id is None:
-            continue
-        entity_alias = entity_alias_main[entity_id]
-        on_node = sqlglot.parse_one(f"SELECT 1 WHERE {join['condition']}", read=dialect).args["where"].this
-        entity_table, _ = entity_tables[entity_id]
-        joins = {platform: _Placeholders.render(on_node, {entity_alias: "{from}", item["from_join"]: "{to}"}, dialect)}
-        if other_table and catalog.other_side(platform, entity_table):
-            joins[other] = _Placeholders.render(
-                on_node, {entity_alias: "{from}", item["from_join"]: "{to}"}, other_dialect,
-                {entity_alias: catalog.column_map(platform, entity_table), item["from_join"]: column_map},
-            )
-        relationship = {
-            "id": f"rel.{entity_id.split('.', 1)[1]}__{item['id'].split('.', 1)[1]}",
-            "kind": "relationship",
-            "name": f"{item['name']} for {entity_id}",
-            "owner": {"team": team, "steward": steward},
-            "status": "draft",
-            "version": 1,
-            "from": entity_id,
-            "to": item["id"],
-            "join": joins,
-            "join_type": join["type"] if join["type"] in ("inner", "left") else "inner",
-            "cardinality": join.get("inferred_cardinality") or item.get("cardinality", "many_to_one"),
-            "provenance": provenance,
-        }
-        if join.get("inferred_cardinality"):
-            relationship["cardinality_evidence"] = "harvest probe: key uniqueness on both sides"
-        definitions.append(relationship)
-
-    for item in answers.get("metrics", []) or []:
-        record = base(item, "metric")
-        record["expression"] = item["expression"]
-        record["applies_to"] = item["applies_to"]
-        record["additivity"] = item.get("additivity", "additive")
-        record["provenance"] = provenance
-        definitions.append(record)
-
-    for item in answers.get("anchors", []) or []:
-        record = base(item, "anchor")
-        record["published_in"] = item["published_in"]
-        record["measures"] = item["measures"]
-        record["values"] = item["values"]
-        record["tolerance_pct"] = item.get("tolerance_pct", 0.5)
-        record["provenance"] = provenance
-        definitions.append(record)
+    definitions = _entity_drafts(ctx, answers.get("entities", []) or [], entity_alias_main, entity_tables)
+    definitions += _dimension_drafts(ctx, answers.get("dimensions", []) or [], entity_alias_main, entity_tables)
+    definitions += _metric_and_anchor_drafts(ctx, answers)
 
     return _write_drafts(layer, model, catalog, answers, tree, platform, other, dialect, other_dialect,
                          definitions, provenance, team, steward, overwrite)

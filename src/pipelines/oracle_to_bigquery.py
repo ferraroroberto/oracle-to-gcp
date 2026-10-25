@@ -93,75 +93,14 @@ def run(
     artifact_dir = Path(paths["run_dir"])
     trace_path = artifact_dir / f"run_trace_{timestamp}.json"
     try:
-        with (
-            closing(connect_sqlite(paths["oracle_db"])) as oracle_conn,
-            closing(connect_sqlite(paths["bigquery_db"])) as bq_conn,
-        ):
-            pure_sql, resolved = materialize_variables(source_script, oracle_conn)
-            record("Stage 1 materialized variables: %s", resolved)
-            recorder.add(
-                "materialize",
-                "variables_resolved",
-                {
-                    "resolved_variables": resolved,
-                    "pure_sql": pure_sql if active_config.trace.verbose else "",
-                },
-            )
-
-            units = build_units(pure_sql)
-            record("Stage 2 split script into %d ordered units", len(units))
-            recorder.add("split", "units_built", {"unit_count": len(units), "units": [_unit_summary(unit) for unit in units]})
-
-            preflight = run_table_preflight(
-                units=units,
-                pipeline_config=active_config,
-                legacy_mapping=mapping_registry,
-                oracle_conn=oracle_conn,
-                bigquery_conn=bq_conn,
-                registry_path=active_config.execution.table_registry_path,
-            )
-            record("Stage 3 table preflight: %s", "; ".join(preflight.messages))
-            recorder.add("preflight", "table_readiness_checked", preflight.to_dict())
-            if not preflight.can_run:
-                raise ValueError("table preflight failed: " + "; ".join(preflight.messages))
-
-            registry_mapping = {row.oracle_table: row.bigquery_table for row in preflight.mappings if row.ready}
-            intermediate_mapping = _target_mapping(units)
-            active_mapping = {**mapping_registry, **registry_mapping, **intermediate_mapping}
-            _assert_all_sources_mapped(units, active_mapping)
-            recorder.add(
-                "mapping",
-                "active_mapping_ready",
-                {
-                    "registry": mapping_registry,
-                    "registry_ready_mapping": registry_mapping,
-                    "intermediate_mapping": intermediate_mapping,
-                    "active_mapping": active_mapping,
-                },
-            )
-            for unit in units:
-                external_sources = [source for source in unit.sources if source in registry_mapping]
-                checks = assert_rowcount_parity(oracle_conn, bq_conn, registry_mapping, external_sources)
-                if checks:
-                    record("Stage 4 row-count parity for unit %d: %s", unit.id, checks)
-                    recorder.add("validation", "rowcount_parity", {"unit_id": unit.id, "checks": checks})
-
-            translator = TranslationEngine(
-                use_local_hub=active_config.run.use_local_hub,
-                simulate_first_attempt_mismatch=active_config.run.simulate_repair_path,
-                llm_config=active_config.llm,
-            )
-            for unit in units:
-                _translate_execute_validate(
-                    unit=unit,
-                    translator=translator,
-                    mapping=active_mapping,
-                    oracle_conn=oracle_conn,
-                    bq_conn=bq_conn,
-                    repair_limit=active_config.run.repair_limit,
-                    record=record,
-                    recorder=recorder,
-                )
+        units, resolved = _execute_stages(
+            active_config=active_config,
+            source_script=source_script,
+            mapping_registry=mapping_registry,
+            paths=paths,
+            record=record,
+            recorder=recorder,
+        )
     except Exception as exc:
         recorder.add(
             "run",
@@ -176,6 +115,116 @@ def run(
         )
         raise
 
+    return _write_run_artifacts(
+        units=units,
+        resolved=resolved,
+        active_config=active_config,
+        paths=paths,
+        artifact_dir=artifact_dir,
+        timestamp=timestamp,
+        trace_path=trace_path,
+        run_log=run_log,
+        record=record,
+        recorder=recorder,
+    )
+
+
+def _execute_stages(
+    *,
+    active_config: PipelineConfig,
+    source_script: str,
+    mapping_registry: dict[str, str],
+    paths: dict[str, Path],
+    record: Callable[..., None],
+    recorder: TraceRecorder,
+) -> tuple[list[SqlUnit], dict[str, str]]:
+    """Materialize, split, preflight, map, translate, execute and validate every unit."""
+    with (
+        closing(connect_sqlite(paths["oracle_db"])) as oracle_conn,
+        closing(connect_sqlite(paths["bigquery_db"])) as bq_conn,
+    ):
+        pure_sql, resolved = materialize_variables(source_script, oracle_conn)
+        record("Stage 1 materialized variables: %s", resolved)
+        recorder.add(
+            "materialize",
+            "variables_resolved",
+            {
+                "resolved_variables": resolved,
+                "pure_sql": pure_sql if active_config.trace.verbose else "",
+            },
+        )
+
+        units = build_units(pure_sql)
+        record("Stage 2 split script into %d ordered units", len(units))
+        recorder.add("split", "units_built", {"unit_count": len(units), "units": [_unit_summary(unit) for unit in units]})
+
+        preflight = run_table_preflight(
+            units=units,
+            pipeline_config=active_config,
+            legacy_mapping=mapping_registry,
+            oracle_conn=oracle_conn,
+            bigquery_conn=bq_conn,
+            registry_path=active_config.execution.table_registry_path,
+        )
+        record("Stage 3 table preflight: %s", "; ".join(preflight.messages))
+        recorder.add("preflight", "table_readiness_checked", preflight.to_dict())
+        if not preflight.can_run:
+            raise ValueError("table preflight failed: " + "; ".join(preflight.messages))
+
+        registry_mapping = {row.oracle_table: row.bigquery_table for row in preflight.mappings if row.ready}
+        intermediate_mapping = _target_mapping(units)
+        active_mapping = {**mapping_registry, **registry_mapping, **intermediate_mapping}
+        _assert_all_sources_mapped(units, active_mapping)
+        recorder.add(
+            "mapping",
+            "active_mapping_ready",
+            {
+                "registry": mapping_registry,
+                "registry_ready_mapping": registry_mapping,
+                "intermediate_mapping": intermediate_mapping,
+                "active_mapping": active_mapping,
+            },
+        )
+        for unit in units:
+            external_sources = [source for source in unit.sources if source in registry_mapping]
+            checks = assert_rowcount_parity(oracle_conn, bq_conn, registry_mapping, external_sources)
+            if checks:
+                record("Stage 4 row-count parity for unit %d: %s", unit.id, checks)
+                recorder.add("validation", "rowcount_parity", {"unit_id": unit.id, "checks": checks})
+
+        translator = TranslationEngine(
+            use_local_hub=active_config.run.use_local_hub,
+            simulate_first_attempt_mismatch=active_config.run.simulate_repair_path,
+            llm_config=active_config.llm,
+        )
+        for unit in units:
+            _translate_execute_validate(
+                unit=unit,
+                translator=translator,
+                mapping=active_mapping,
+                oracle_conn=oracle_conn,
+                bq_conn=bq_conn,
+                repair_limit=active_config.run.repair_limit,
+                record=record,
+                recorder=recorder,
+            )
+    return units, resolved
+
+
+def _write_run_artifacts(
+    *,
+    units: list[SqlUnit],
+    resolved: dict[str, str],
+    active_config: PipelineConfig,
+    paths: dict[str, Path],
+    artifact_dir: Path,
+    timestamp: str,
+    trace_path: Path,
+    run_log: list[str],
+    record: Callable[..., None],
+    recorder: TraceRecorder,
+) -> RunReport:
+    """Write the final script, lineage, trace and run report; return the report."""
     final_script = "\n\n".join(unit.bq_sql.rstrip(";") + ";" for unit in units)
     script_path = artifact_dir / "final_bigquery.sql"
     report_path = artifact_dir / f"run_report_{timestamp}.json"

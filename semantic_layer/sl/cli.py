@@ -209,7 +209,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sl", description="Team semantic layer toolkit", parents=[common])
     parser.set_defaults(root=None, config=None, json=False, verbose=False)
     sub = parser.add_subparsers(dest="command", required=True)
+    _add_core_commands(sub, common)
+    _add_find_commands(sub, common)
+    _add_harvest_command(sub, common)
+    _add_ask_command(sub, common)
+    _add_capture_command(sub, common)
+    _add_maintenance_commands(sub, common)
+    return parser
 
+
+def _add_core_commands(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     mock = sub.add_parser("mock", parents=[common], help="Mock warehouses")
     mock.add_argument("mock_command", choices=["seed"])
     mock.set_defaults(func=cmd_mock_seed)
@@ -226,6 +235,8 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--force", action="store_true", help="Run a disabled Phase 2 module once")
     build.set_defaults(func=cmd_build)
 
+
+def _add_find_commands(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     search = sub.add_parser("search", parents=[common], help="Search names, synonyms and descriptions")
     search.add_argument("text")
     show = sub.add_parser("show", parents=[common], help="One definition with provenance and usage")
@@ -242,6 +253,8 @@ def build_parser() -> argparse.ArgumentParser:
     for p in (search, show, owners, table, lineage, health):
         p.set_defaults(func=cmd_find)
 
+
+def _add_harvest_command(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     harvest = sub.add_parser("harvest", parents=[common], help="Learn definitions from working SQL")
     hsub = harvest.add_subparsers(dest="harvest_command", required=True)
     analyse = hsub.add_parser("analyse", parents=[common], help="parse → cross-reference → probe → interview questions")
@@ -259,6 +272,8 @@ def build_parser() -> argparse.ArgumentParser:
     bulk.add_argument("--force", action="store_true")
     harvest.set_defaults(func=cmd_harvest)
 
+
+def _add_ask_command(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     ask = sub.add_parser("ask", parents=[common], help="Question → certified answer pipeline")
     asub = ask.add_subparsers(dest="ask_command", required=True)
     resolve = asub.add_parser("resolve", parents=[common], help="Match business terms; flag ambiguity")
@@ -269,6 +284,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--no-execute", action="store_true")
     ask.set_defaults(func=cmd_ask)
 
+
+def _add_capture_command(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     capture = sub.add_parser("capture", parents=[common], help="Turn an in-session clarification into a draft or an issue")
     csub = capture.add_subparsers(dest="capture_command", required=True)
     cdef = csub.add_parser("definition", parents=[common])
@@ -284,6 +301,8 @@ def build_parser() -> argparse.ArgumentParser:
     cissue.add_argument("--reported-by", default="agent session")
     capture.set_defaults(func=cmd_capture)
 
+
+def _add_maintenance_commands(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     checks = sub.add_parser("checks", parents=[common], help="Scheduled health checks")
     checks.add_argument("checks_command", choices=["run"])
     checks.add_argument("--full", action="store_true", help="[Phase 2] freshness, quality, reconciliations")
@@ -308,7 +327,6 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--clean", action="store_true", required=True)
     init.add_argument("--yes", action="store_true")
     init.set_defaults(func=cmd_init)
-    return parser
 
 
 def main(argv: list[str] | None = None) -> int:

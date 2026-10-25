@@ -1,9 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "fn:semantic_layer/sl/cli.py:build_parser", "lines": 110},
-    {"key": "fn:semantic_layer/sl/harvest.py:draft", "lines": 141},
-    {"key": "fn:src/pipelines/oracle_to_bigquery.py:run", "lines": 169},
-    {"key": "fn:tests/audits/query_optimization_loop.py:optimize_query", "lines": 182}
-  ]
+  "entries": []
 }
