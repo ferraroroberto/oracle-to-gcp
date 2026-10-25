@@ -455,7 +455,7 @@ up last time?" The scaffold's CLAUDE.md mirrors the testing rules into
 every clone, and this doc is the single canonical explanation. When I
 update the recipe, I update it here.
 
-The corresponding rules in `docs/agents/CLAUDE.master.md` (the **End-to-end
+The corresponding rules in project-scaffolding's `docs/agents/CLAUDE.master.md` (the **End-to-end
 UI testing** section) are the *enforcement* layer: they tell every AI
 agent that drops into a downstream repo what to do and what not to do.
 This doc is the *teaching* layer: it tells *me* why those rules exist.

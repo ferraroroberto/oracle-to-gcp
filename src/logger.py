@@ -5,8 +5,8 @@ A single logger that writes simultaneously to:
 
 * The terminal (color-coded, timestamped, rich-style).
 * A rotating file under ``data/logs/``.
-* An in-memory ring buffer, read by ``app.log_panel``'s Streamlit helpers
-  (``stream_to_streamlit()`` / ``render_log_panel()``) to paint a live panel.
+* An in-memory ring buffer, read by ``app.log_panel``'s Streamlit helper
+  (``stream_to_streamlit()``) to paint a live panel.
 
 Usage
 -----
