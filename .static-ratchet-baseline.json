@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "tools": {"jscpd": "5.4.0", "ruff": "0.15.20"},
+  "entries": [
+    {"key": "dup:a80545e484bb:src/pipeline_config.py|src/pipeline_config.py", "files": ["src/pipeline_config.py", "src/pipeline_config.py"]},
+    {"key": "dup:c4e3f9539c7f:tests/test_schema_compatibility_audit.py|tests/test_schema_compatibility_audit.py", "files": ["tests/test_schema_compatibility_audit.py", "tests/test_schema_compatibility_audit.py"]},
+    {"key": "lint:B033:src/bigquery_io.py:if len(unique_vals) <= 2 and all(val in {0, 1, 0.0, 1.0, True, False} for val in unique_vals):", "files": ["src/bigquery_io.py"]},
+    {"key": "lint:B033:src/bigquery_io.py:if len(unique_vals) <= 2 and all(val in {0, 1, 0.0, 1.0, True, False} for val in unique_vals):#2", "files": ["src/bigquery_io.py"]},
+    {"key": "lint:B033:src/bigquery_io.py:if len(unique_vals) <= 2 and all(val in {0, 1, 0.0, 1.0, True, False} for val in unique_vals):#3", "files": ["src/bigquery_io.py"]},
+    {"key": "lint:B033:src/bigquery_io.py:if len(unique_vals) <= 2 and all(val in {0, 1, 0.0, 1.0, True, False} for val in unique_vals):#4", "files": ["src/bigquery_io.py"]}
+  ]
+}
