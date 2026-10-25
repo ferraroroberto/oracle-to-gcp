@@ -353,6 +353,8 @@ Run the full scaffold gate:
 
 The gate includes a docs ratchet: `README.md` stays under 40 KiB and `README.md` / `docs/**/*.md` carry no more history markers (issue references, dated or changelog headings) than `.docs-ratchet-baseline.json` records. Docs state what is true now and why; history belongs to git, PRs and issues.
 
+Beside the docs ratchet the gate runs seven more vendored, baselined ratchets: structure, instruction, doc-refs, dead-code, static (duplicates, unused names, curated bug and security patterns; needs `npx`), comment (no issue references in code comments) and conventions (`no-window`, `logging-not-print`, `no-drive-path`). Each fails only on a finding beyond its committed baseline, and an exit 3 (check could not run) fails as NOT CONFIRMED, never a pass. `CLAUDE.md` lists what each one checks.
+
 ## Rationale
 
 The design reasoning and tradeoffs are documented in `docs/architecture-rationale.md`. For an executive visual summary, open `docs/oracle-to-gcp-process-map.html` or the **Process Map** page in Streamlit. The short version: this project treats the LLM as one replaceable stateless function inside a deterministic migration pipeline. The hard parts are parsing, mapping, ordered execution, validation, and auditability.

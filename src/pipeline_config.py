@@ -117,15 +117,8 @@ class PipelineConfig:
     path: str = ""
 
 
-def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
-    """Load pipeline configuration from JSON, falling back to defaults."""
-    config_path = Path(path) if path is not None else DEFAULT_PIPELINE_CONFIG_PATH
-    if not config_path.is_absolute():
-        config_path = ROOT_DIR / config_path
-    if not config_path.exists():
-        return PipelineConfig(path=str(config_path))
-
-    raw = json.loads(config_path.read_text(encoding="utf-8"))
+def _config_from_raw(raw: dict[str, Any], config_path: Path) -> PipelineConfig:
+    """Build a PipelineConfig from a parsed JSON mapping, rejecting unknown keys per section."""
     return PipelineConfig(
         run=RunOptions(**raw.get("run", {})),
         execution=ExecutionConfig(**raw.get("execution", {})),
@@ -136,6 +129,18 @@ def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
         trace=TraceConfig(**raw.get("trace", {})),
         path=str(config_path),
     )
+
+
+def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
+    """Load pipeline configuration from JSON, falling back to defaults."""
+    config_path = Path(path) if path is not None else DEFAULT_PIPELINE_CONFIG_PATH
+    if not config_path.is_absolute():
+        config_path = ROOT_DIR / config_path
+    if not config_path.exists():
+        return PipelineConfig(path=str(config_path))
+
+    raw = json.loads(config_path.read_text(encoding="utf-8"))
+    return _config_from_raw(raw, config_path)
 
 
 def config_to_dict(config: PipelineConfig) -> dict[str, Any]:
@@ -150,16 +155,7 @@ def write_pipeline_config(path: Path | str, raw: dict[str, Any]) -> PipelineConf
     config_path = Path(path)
     if not config_path.is_absolute():
         config_path = ROOT_DIR / config_path
-    validated = PipelineConfig(
-        run=RunOptions(**raw.get("run", {})),
-        execution=ExecutionConfig(**raw.get("execution", {})),
-        llm=LLMConfig(**raw.get("llm", {})),
-        google_cloud=GoogleCloudConfig(**raw.get("google_cloud", {})),
-        bigquery=BigQueryConfig(**raw.get("bigquery", {})),
-        oracle=OracleConfig(**raw.get("oracle", {})),
-        trace=TraceConfig(**raw.get("trace", {})),
-        path=str(config_path),
-    )
+    validated = _config_from_raw(raw, config_path)
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(config_to_dict(validated), indent=2) + "\n", encoding="utf-8")
     return validated

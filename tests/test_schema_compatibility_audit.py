@@ -10,6 +10,59 @@ from pathlib import Path
 from tests.audits.schema_compatibility_audit import run_audit
 
 
+def _write_correspondence_csv(tmp_path: Path) -> Path:
+    """Write the one-table Oracle-to-BigQuery correspondence file the audit reads."""
+    correspondence_csv = tmp_path / "correspondence.csv"
+    with correspondence_csv.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "oracle_schema",
+                "oracle_table",
+                "bigquery_project",
+                "bigquery_dataset",
+                "bigquery_table",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "oracle_schema": "DEMO",
+                "oracle_table": "sales_orders",
+                "bigquery_project": "mock-project",
+                "bigquery_dataset": "mock_dataset",
+                "bigquery_table": "raw_sales_orders",
+            }
+        )
+    return correspondence_csv
+
+
+def _write_audit_config(
+    tmp_path: Path, correspondence_csv: Path, oracle_db: Path, bigquery_db: Path, **extra: object
+) -> Path:
+    """Write a SQLite-mode audit config that reports into ``tmp_path / "reports"``."""
+    output_dir = tmp_path / "reports"
+    config_path = tmp_path / "schema_audit_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "input": {"path": str(correspondence_csv), "format": "csv"},
+                "oracle": {"mode": "sqlite", "db_path": str(oracle_db)},
+                "bigquery": {"mode": "sqlite", "db_path": str(bigquery_db)},
+                "output": {
+                    "detail_csv": str(output_dir / "column_report.csv"),
+                    "summary_csv": str(output_dir / "table_summary.csv"),
+                    "detail_json": str(output_dir / "column_report.json"),
+                    "summary_json": str(output_dir / "table_summary.json"),
+                },
+                **extra,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return config_path
+
+
 def test_schema_audit_writes_column_and_table_reports(tmp_path: Path) -> None:
     """SQLite adapters should exercise the metadata comparison without live credentials."""
     oracle_db = tmp_path / "oracle.db"
@@ -39,52 +92,18 @@ def test_schema_audit_writes_column_and_table_reports(tmp_path: Path) -> None:
         )
         conn.execute("INSERT INTO raw_sales_orders VALUES (1, '2026-07-01', 10.5, 'target')")
 
-    correspondence_csv = tmp_path / "correspondence.csv"
-    with correspondence_csv.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "oracle_schema",
-                "oracle_table",
-                "bigquery_project",
-                "bigquery_dataset",
-                "bigquery_table",
-            ],
-        )
-        writer.writeheader()
-        writer.writerow(
-            {
-                "oracle_schema": "DEMO",
-                "oracle_table": "sales_orders",
-                "bigquery_project": "mock-project",
-                "bigquery_dataset": "mock_dataset",
-                "bigquery_table": "raw_sales_orders",
-            }
-        )
-
-    output_dir = tmp_path / "reports"
-    config_path = tmp_path / "schema_audit_config.json"
-    config_path.write_text(
-        json.dumps(
-            {
-                "input": {"path": str(correspondence_csv), "format": "csv"},
-                "oracle": {"mode": "sqlite", "db_path": str(oracle_db)},
-                "bigquery": {"mode": "sqlite", "db_path": str(bigquery_db)},
-                "output": {
-                    "detail_csv": str(output_dir / "column_report.csv"),
-                    "summary_csv": str(output_dir / "table_summary.csv"),
-                    "detail_json": str(output_dir / "column_report.json"),
-                    "summary_json": str(output_dir / "table_summary.json"),
-                },
-                "sampling": {"enabled": True, "max_rows": 2},
-                "logging": {"level": "INFO"},
-            }
-        ),
-        encoding="utf-8",
+    config_path = _write_audit_config(
+        tmp_path,
+        _write_correspondence_csv(tmp_path),
+        oracle_db,
+        bigquery_db,
+        sampling={"enabled": True, "max_rows": 2},
+        logging={"level": "INFO"},
     )
 
     comparisons, summaries = run_audit(config_path)
 
+    output_dir = tmp_path / "reports"
     statuses = {row.oracle_column or row.bigquery_column: row.compatibility_status for row in comparisons}
     assert statuses["amount"] == "compatible"
     assert statuses["order_date"] == "type_mismatch"
@@ -100,46 +119,11 @@ def test_schema_audit_writes_column_and_table_reports(tmp_path: Path) -> None:
 
 def test_schema_audit_records_table_metadata_errors(tmp_path: Path) -> None:
     """One table failure should still produce a machine-readable error report."""
-    correspondence_csv = tmp_path / "correspondence.csv"
-    with correspondence_csv.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "oracle_schema",
-                "oracle_table",
-                "bigquery_project",
-                "bigquery_dataset",
-                "bigquery_table",
-            ],
-        )
-        writer.writeheader()
-        writer.writerow(
-            {
-                "oracle_schema": "DEMO",
-                "oracle_table": "sales_orders",
-                "bigquery_project": "mock-project",
-                "bigquery_dataset": "mock_dataset",
-                "bigquery_table": "raw_sales_orders",
-            }
-        )
-
-    output_dir = tmp_path / "reports"
-    config_path = tmp_path / "schema_audit_config.json"
-    config_path.write_text(
-        json.dumps(
-            {
-                "input": {"path": str(correspondence_csv), "format": "csv"},
-                "oracle": {"mode": "sqlite", "db_path": str(tmp_path)},
-                "bigquery": {"mode": "sqlite", "db_path": str(tmp_path / "bigquery.db")},
-                "output": {
-                    "detail_csv": str(output_dir / "column_report.csv"),
-                    "summary_csv": str(output_dir / "table_summary.csv"),
-                    "detail_json": str(output_dir / "column_report.json"),
-                    "summary_json": str(output_dir / "table_summary.json"),
-                },
-            }
-        ),
-        encoding="utf-8",
+    config_path = _write_audit_config(
+        tmp_path,
+        _write_correspondence_csv(tmp_path),
+        tmp_path,
+        tmp_path / "bigquery.db",
     )
 
     comparisons, summaries = run_audit(config_path)
