@@ -161,7 +161,7 @@ def compare_dataframe_schema(
                 info_messages.append(f"{col}: source BOOL vs BigQuery {bq_type}")
             elif excel_type == "FLOAT64":
                 unique_vals = df_converted[col].dropna().unique()
-                if len(unique_vals) <= 2 and all(val in {0, 1, 0.0, 1.0, True, False} for val in unique_vals):
+                if len(unique_vals) <= 2 and all(val in {0, 1} for val in unique_vals):
                     df_converted[col] = df_converted[col].fillna(False).astype(bool)
                     conversion_messages.append(
                         f"Converting {col}: source FLOAT64 (with nulls) -> BigQuery BOOLEAN (nulls set to False)"
