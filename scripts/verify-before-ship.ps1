@@ -39,9 +39,13 @@
                            comments than .comment-ratchet-baseline.json. Whole tree,
                            never routed; exit 3 (not confirmed) fails like any non-zero
                            exit.
-     10. semantic layer  — definitions validate, generated build/ is current,
+     10. conventions ratchet — no Python file with more hits of an enabled rule (no-window,
+                           logging-not-print, no-drive-path) than
+                           .conventions-ratchet-baseline.json. Whole tree, never routed;
+                           exit 3 (not confirmed) fails like any non-zero exit.
+     11. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
-     11. pytest        — unit + headless e2e (auto-boots Streamlit per its fixture),
+     12. pytest       — unit + headless e2e (auto-boots Streamlit per its fixture),
                            including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
@@ -86,6 +90,7 @@ Invoke-Stage "doc-refs ratchet"                   { & $py scripts/doc_refs_ratch
 Invoke-Stage "dead-code ratchet"                  { & $py scripts/dead_code_ratchet.py }
 Invoke-Stage "static ratchet"                     { & $py scripts/static_ratchet.py }
 Invoke-Stage "comment ratchet"                    { & $py scripts/comment_ratchet.py }
+Invoke-Stage "conventions ratchet"                { & $py scripts/conventions_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }

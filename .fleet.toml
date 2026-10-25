@@ -29,6 +29,7 @@ doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "23dbefa46635c95
 dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "0eb0da42298e391fc614b3fe550bd6cf2d07c693", dest = "scripts/dead_code_ratchet.py" }
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "537cf3931b57e7453ed251850c0dbeac042b03bf", dest = "scripts/static_ratchet.py" }
 comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "e56308e1c099712cf5a006557c94e3f9ae4fe8aa", dest = "scripts/comment_ratchet.py" }
+conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "0eb0da42298e391fc614b3fe550bd6cf2d07c693", dest = "scripts/conventions_ratchet.py" }
 
 # [docs_ratchet] -- the scaffold's docs ratchet. The gate (scripts/verify-before-ship.ps1)
 # runs scripts/docs_ratchet.py through scripts/docs_ratchet_gate.py, which fails when
@@ -102,3 +103,19 @@ baseline = ".static-ratchet-baseline.json"
 [comment_ratchet]
 enabled  = true
 baseline = ".comment-ratchet-baseline.json"
+
+# [conventions_ratchet] -- the scaffold's conventions ratchet. The gate
+# (scripts/verify-before-ship.ps1) runs scripts/conventions_ratchet.py, which fails when a
+# Python file has more hits of an enabled rule than .conventions-ratchet-baseline.json
+# records. Rules enabled, each with its reason:
+#   no-window         -- the app and its tests run on Windows and spawn subprocesses.
+#   logging-not-print -- the project convention is `logging`, not print(), in app/ and src/.
+#   no-drive-path     -- the project convention is no hardcoded paths.
+# secret-compare and git-wrapper are off: the repo has no constant-time-compare or
+# git-wrapper helper for them to route calls through. A check that cannot run (exit 3) is
+# NOT CONFIRMED and fails, never a pass. Mechanism + limits: project-scaffolding
+# docs/conventions-ratchet.md.
+[conventions_ratchet]
+enabled  = true
+baseline = ".conventions-ratchet-baseline.json"
+rules    = ["no-window", "logging-not-print", "no-drive-path"]
