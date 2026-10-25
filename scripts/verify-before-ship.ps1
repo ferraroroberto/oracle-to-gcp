@@ -31,9 +31,13 @@
                            tracked tree refers to, beyond .dead-code-ratchet-baseline.json.
                            Whole tree, never routed; exit 3 (not confirmed) fails like any
                            non-zero exit.
-      8. semantic layer  — definitions validate, generated build/ is current,
+      8. static ratchet  — no new duplicated block, unused import or variable, or curated
+                           ruff bug/security finding beyond .static-ratchet-baseline.json.
+                           Needs npx and ruff; whole tree, never routed; exit 3 (not
+                           confirmed) fails like any non-zero exit.
+      9. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
-      9. pytest          — unit + headless e2e (auto-boots Streamlit per its fixture),
+     10. pytest         — unit + headless e2e (auto-boots Streamlit per its fixture),
                            including semantic_layer/tests
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
@@ -76,6 +80,7 @@ Invoke-Stage "structure ratchet"                  { & $py scripts/structure_ratc
 Invoke-Stage "instruction ratchet"                { & $py scripts/instruction_ratchet.py }
 Invoke-Stage "doc-refs ratchet"                   { & $py scripts/doc_refs_ratchet.py }
 Invoke-Stage "dead-code ratchet"                  { & $py scripts/dead_code_ratchet.py }
+Invoke-Stage "static ratchet"                     { & $py scripts/static_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
