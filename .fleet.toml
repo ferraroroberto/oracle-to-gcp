@@ -120,3 +120,65 @@ baseline = ".comment-ratchet-baseline.json"
 enabled  = true
 baseline = ".conventions-ratchet-baseline.json"
 rules    = ["no-window", "logging-not-print", "no-drive-path"]
+
+# [e2e] -- diff-proportionate e2e routing (project-scaffolding docs/e2e-routing.md).
+# scripts/classify_e2e.py loads this table and maps the changed-file set to a
+# coverage tier; the pre-ship gate does not yet consume the result (no
+# scripts/classify_e2e.py call in scripts/verify-before-ship.ps1), so today
+# this table only drives this skill's own routed slice, not the gate's time.
+# Conservative starter: only plainly inert paths (docs, the standalone
+# tests/audits/ + other non-e2e tests, the self-contained semantic_layer/
+# spike) are "none". app/ imports from src/, config/ and examples/ (demo data
+# the UI loads), so those stay unclassified and fail safe to "full".
+[e2e]
+static_pytest_target = "tests/e2e/test_smoke.py"
+static_browsers       = ["chromium"]
+full_pytest_target    = "tests/e2e"
+
+[[e2e.rule]]
+tier   = "full"
+prefix = "app/"
+[[e2e.rule]]
+tier   = "full"
+prefix = "tests/e2e/"
+[[e2e.rule]]
+tier   = "none"
+prefix = "tests/audits/"
+[[e2e.rule]]
+tier       = "none"
+prefix     = "tests/"
+extensions = ["py"]
+[[e2e.rule]]
+tier   = "none"
+prefix = "semantic_layer/"
+[[e2e.rule]]
+tier   = "none"
+prefix = "docs/"
+[[e2e.rule]]
+tier       = "none"
+path       = "README.md"
+# The ratchet baselines: read by the gate only, never the browser -> none.
+[[e2e.rule]]
+tier = "none"
+path = ".static-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".docs-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".structure-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".instruction-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".doc-refs-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".dead-code-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".comment-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".conventions-ratchet-baseline.json"

@@ -151,8 +151,7 @@ def type_family(raw_type: str) -> str:
 
     Single source of truth for column type-family classification — shared by
     ``src.preflight``'s compatibility check and
-    ``tests.audits.schema_compatibility_audit``'s column comparison, which
-    previously each maintained their own independently-drifting copy.
+    ``tests.audits.schema_compatibility_audit``'s column comparison.
     """
     normalized = raw_type.upper().strip()
     if any(token in normalized for token in ("CHAR", "CLOB", "STRING", "TEXT", "VARCHAR")):
