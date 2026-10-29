@@ -3,8 +3,8 @@
 Real (non-mock) GCS client wiring. ``google-cloud-storage`` is imported
 lazily inside each function so the mock pipeline never requires it to be
 installed — same convention as ``tests/audits/schema_compatibility_audit.py``'s
-Oracle/BigQuery adapters. Consolidates upload/download logic previously
-duplicated across sibling fleet repos (see issue #17).
+Oracle/BigQuery adapters. The shared upload/download helper that sibling
+fleet repos vendor.
 """
 
 from __future__ import annotations
