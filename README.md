@@ -57,7 +57,7 @@ The sidebar also includes **Process Map**, an executive one-page visual of the m
 
 Requires `cloudflared` on `PATH` (`winget install Cloudflare.cloudflared` on Windows, `brew install cloudflared` / `apt install cloudflared` elsewhere). Both scripts start Streamlit on port `8501` and print the public `https://` tunnel URL to share; `Ctrl+C` stops the tunnel (and the underlying Streamlit process).
 
-The shared link runs in shared mode (`ORACLE_TO_GCP_SHARED_MODE=1`, set by both scripts): the **Execution** page shows only the built-in demo script with its run controls. The Execution, Connection Configuration, Table Correspondence and Advanced JSON tabs, and the config-path field, are available only when the app is launched locally with `launch_app`.
+The shared link runs in shared mode (`ORACLE_TO_GCP_SHARED_MODE=1`, set by both scripts): the **Execution** page shows only the built-in demo script with its run controls. The Execution, Connection Configuration, Table Correspondence and Advanced JSON tabs, and the config-path field, are available only when the app is launched locally with `launch_app`. Demo runs share one output directory, so a visitor who starts a run while another is still translating is asked to wait rather than overwriting the first run's databases.
 
 ## Mock Inputs
 
@@ -211,6 +211,8 @@ The default config template lives at:
 tests/audits/query_cost_audit_config.json
 ```
 
+Every pipeline run also writes a stable copy of its report as `run_report_latest.json` next to the timestamped one; both audit config templates read `data/output/mock_run/run_report_latest.json`, so they work right after a demo run.
+
 Run it against a completed run's report with:
 
 ```powershell
@@ -233,6 +235,8 @@ The loop stops on any of three conditions:
 - **Validation failure** — a candidate's result set diverges from the current baseline. The candidate is rejected and the loop stops.
 - **Diminishing returns** — marginal cost improvement stays below `optimization.min_improvement_pct` for `optimization.diminishing_returns_streak` consecutive iterations.
 - **Max iterations** — `optimization.max_iterations` is reached.
+
+The correctness gate fingerprints a statement's result rows, so only plain `SELECT` / `WITH` queries enter the loop. A DDL or DML statement (`CREATE … AS SELECT`, `INSERT`) is reported at its baseline with stop reason `non_select_statement` and is never executed, and a non-`SELECT` candidate is rejected before it runs (`non_select_candidate`).
 
 The full per-iteration history (candidate SQL, estimated cost, accept/reject decision, validation outcome) is kept, not just the final query — it is written to the markdown report alongside the baseline-vs-final cost improvement.
 
@@ -276,7 +280,7 @@ It runs on two DuckDB mock warehouses (legacy Oracle-shaped, cloud BigQuery-shap
 `src/gcs_io.py` and `src/bigquery_io.py` are this repo's canonical, real (non-mock) Google Cloud Storage and BigQuery IO helpers — the shared implementation other fleet repos with duplicate ad hoc GCS/BigQuery code should consume instead of hand-rolling their own. Both lazily import `google-cloud-storage` / `google-cloud-bigquery` inside each function (same convention as the schema audit's Oracle/BigQuery adapters above), so the mock pipeline never requires them to be installed, and both authenticate via Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS`.
 
 - `gcs_io.py` — `upload_file`, `upload_string`, `download_file`, `download_bytes`, `download_prefix`, all operating on `gs://bucket/path` URIs.
-- `bigquery_io.py` — `run_query` (parameterized query execution), `execute_script` (multi-statement scripts), `fetch_table_schema`, `load_dataframe`, and `compare_dataframe_schema` (schema-compatibility checks with type coercion for loading a DataFrame into an existing BigQuery table).
+- `bigquery_io.py` — `run_query` (parameterized query execution), `dry_run_bytes` (uncached dry-run byte estimate), `execute_script` (multi-statement scripts), `fetch_table_schema`, `load_dataframe`, and `compare_dataframe_schema` (schema-compatibility checks with type coercion for loading a DataFrame into an existing BigQuery table).
 
 Sibling repos consume these by vendoring (byte-copying) the module with a provenance comment, since the fleet's `[vendored]`/`propagate-vendored` tooling is scoped to `project-scaffolding` as source today.
 
@@ -328,6 +332,8 @@ tests/
   test_query_optimization_loop.py Standalone query optimization loop tests
   test_gcs_io.py                 Shared GCS IO helper tests
   test_bigquery_io.py            Shared BigQuery IO helper tests
+  test_bigquery_single_client_path.py  Audit tools reach BigQuery only via bigquery_io
+  test_translator_demo_view.py   Execution page config-tab and demo-run lock render tests
   e2e/test_smoke.py              Streamlit boot smoke test
 ```
 

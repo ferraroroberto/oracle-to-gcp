@@ -19,7 +19,6 @@ LOG_DIR = DATA_DIR / "logs"
 EXAMPLES_DIR = ROOT_DIR / "examples"
 
 APP_NAME = os.getenv("ORACLE_TO_GCP_APP_NAME", "Oracle to GCP")
-DEBUG = os.getenv("DEBUG", "0") == "1"
 # Set by launch_server.bat / launch_server.sh: the app is reachable through a
 # shared link, so the UI offers only the built-in demo (see translator_demo).
 SHARED_MODE = os.getenv("ORACLE_TO_GCP_SHARED_MODE", "0") == "1"

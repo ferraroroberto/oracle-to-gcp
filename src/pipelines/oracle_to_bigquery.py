@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 from collections.abc import Callable
 from contextlib import closing
 from dataclasses import asdict
@@ -38,6 +39,9 @@ from src.validation import (
 )
 
 log = get_logger("oracle_to_bigquery")
+
+# Stable copy of the newest run report, so the audit config templates have a fixed input path.
+LATEST_RUN_REPORT_NAME = "run_report_latest.json"
 
 
 def run(
@@ -257,6 +261,7 @@ def _write_run_artifacts(
     recorder.add("artifacts", "written", artifacts)
     recorder.write(trace_path, status=status, pipeline_config=active_config, artifacts=artifacts)
     report_path.write_text(json.dumps(_report_to_jsonable(report), indent=2), encoding="utf-8")
+    shutil.copyfile(report_path, artifact_dir / LATEST_RUN_REPORT_NAME)
     return report
 
 

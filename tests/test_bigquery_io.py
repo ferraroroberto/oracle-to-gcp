@@ -161,3 +161,19 @@ def test_compare_dataframe_schema_lenient_datetime_column():
 
     assert all_ok is True
     assert "snapshot_date" in converted.columns
+
+
+def test_dry_run_bytes_issues_uncached_dry_run(fake_bigquery_client):
+    fake_bigquery_client.query.return_value.total_bytes_processed = 4096
+
+    assert bigquery_io.dry_run_bytes("SELECT 1", project="proj") == 4096
+
+    _, kwargs = fake_bigquery_client.query.call_args
+    assert kwargs["job_config"].dry_run is True
+    assert kwargs["job_config"].use_query_cache is False
+
+
+def test_dry_run_bytes_treats_missing_total_as_zero(fake_bigquery_client):
+    fake_bigquery_client.query.return_value.total_bytes_processed = None
+
+    assert bigquery_io.dry_run_bytes("SELECT 1") == 0

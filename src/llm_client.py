@@ -44,7 +44,6 @@ class LocalHubClient:
         system_message: str | None = None,
         user_prompt_template: str | None = None,
         extra_parameters: dict[str, Any] | None = None,
-        auth_mode: str = "bearer",
         api_key_env_var: str = "LLM_API_KEY",
         authorization_header_env_var: str = "",
         request_format: str = "openai_chat",
@@ -59,7 +58,6 @@ class LocalHubClient:
         self.system_message = system_message or LLMConfig().system_message
         self.user_prompt_template = user_prompt_template or LLMConfig().user_prompt_template
         self.extra_parameters = extra_parameters or {}
-        self.auth_mode = auth_mode
         self.api_key_env_var = api_key_env_var
         self.authorization_header_env_var = authorization_header_env_var
         self.request_format = request_format
@@ -76,7 +74,6 @@ class LocalHubClient:
             system_message=config.system_message,
             user_prompt_template=config.user_prompt_template,
             extra_parameters=config.extra_parameters,
-            auth_mode=config.auth_mode,
             api_key_env_var=config.api_key_env_var,
             authorization_header_env_var=config.authorization_header_env_var,
             request_format=config.request_format,

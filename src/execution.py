@@ -9,7 +9,7 @@ from typing import Any
 
 from src.config import ROOT_DIR
 from src.pipeline_config import PipelineConfig
-from src.pipelines.oracle_to_bigquery import run
+from src.pipelines.oracle_to_bigquery import LATEST_RUN_REPORT_NAME, run
 from src.sql_models import RunReport
 
 
@@ -111,7 +111,7 @@ def find_previous_results(root: str | Path, *, result_suffix: str = "_bq") -> li
     reports: list[Path] = []
     for result_dir in directory.glob(f"*{result_suffix}"):
         if result_dir.is_dir():
-            reports.extend(result_dir.glob("run_report_*.json"))
+            reports.extend(path for path in result_dir.glob("run_report_*.json") if path.name != LATEST_RUN_REPORT_NAME)
     return sorted(reports, key=lambda path: (path.stat().st_mtime, path.name), reverse=True)
 
 

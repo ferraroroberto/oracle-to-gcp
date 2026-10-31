@@ -64,6 +64,15 @@ def run_query(
     return [dict(row.items()) for row in rows]
 
 
+def dry_run_bytes(sql: str, project: str | None = None) -> int:
+    """Return ``total_bytes_processed`` from an uncached dry-run of ``sql`` (nothing is scanned)."""
+    bigquery = _bigquery_module()
+    client = get_client(project)
+    job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
+    log.info("Dry-running BigQuery query (%d chars)", len(sql))
+    return int(client.query(sql, job_config=job_config).total_bytes_processed or 0)
+
+
 def execute_script(sql_script: str, project: str | None = None) -> None:
     """Execute a (possibly multi-statement) BigQuery script and block until done."""
     client = get_client(project)

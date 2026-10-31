@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import re
 
-from src import config
+from src import config, logger
 from src.pipeline_config import load_pipeline_config, resolve_output_dir, with_overrides
 
 
@@ -21,9 +22,12 @@ def test_root_dir_is_the_repo_root() -> None:
     assert (config.ROOT_DIR / "src" / "config.py").is_file()
 
 
-def test_app_name_and_debug_have_sane_defaults() -> None:
+def test_app_name_has_sane_default() -> None:
     assert config.APP_NAME == "Oracle to GCP"
-    assert isinstance(config.DEBUG, bool)
+
+
+def test_logger_writes_under_the_configured_log_dir() -> None:
+    assert logger._LOG_FILE.parent == config.LOG_DIR
 
 
 def test_pipeline_config_loads_json_and_applies_overrides(tmp_path) -> None:
@@ -59,3 +63,19 @@ def test_pipeline_config_loads_json_and_applies_overrides(tmp_path) -> None:
     assert overridden.trace.enabled is True
     assert overridden.llm.temperature == 0.7
     assert resolve_output_dir("data/output/custom") == config.ROOT_DIR / "data" / "output" / "custom"
+
+
+def test_every_config_constant_is_read_by_product_code() -> None:
+    """A setting only its own definition mentions looks live but does nothing (tests do not count)."""
+    product_sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for directory in ("src", "app")
+        for path in (config.ROOT_DIR / directory).rglob("*.py")
+    )
+    unused = [
+        name
+        for name in vars(config)
+        if name.isupper() and len(re.findall(rf"\b{name}\b", product_sources)) < 2
+    ]
+
+    assert unused == [], f"src/config.py constants no product code reads: {unused}"
