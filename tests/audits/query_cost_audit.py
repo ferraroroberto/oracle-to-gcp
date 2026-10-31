@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from src import bigquery_io
 from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS
 from src.llm_client import LocalHubClient
 from tests.audits._common import configure_logging as _configure_logging
@@ -83,16 +84,7 @@ class BigQueryDryRunEstimator:
 
     def estimate_bytes(self, sql: str) -> int:
         """Return ``total_bytes_processed`` from a dry-run query job."""
-        try:
-            from google.cloud import bigquery
-        except ImportError as exc:
-            raise RuntimeError("Install google-cloud-bigquery to use the BigQuery cost estimator") from exc
-
-        client = bigquery.Client(project=self.project_id or None)
-        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
-        log.info("Dry-running query against BigQuery (%d chars)", len(sql))
-        job = client.query(sql, job_config=job_config)
-        return int(job.total_bytes_processed or 0)
+        return bigquery_io.dry_run_bytes(sql, self.project_id or None)
 
 
 class MockCostEstimator:

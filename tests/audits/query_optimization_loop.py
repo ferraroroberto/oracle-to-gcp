@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from src import bigquery_io
 from src.llm_client import LocalHubClient, _strip_sql_fence
 from src.validation import compare_fingerprints
 from tests.audits._common import configure_logging as _configure_logging
@@ -96,14 +97,8 @@ class BigQueryQueryExecutor:
 
     def execute(self, sql: str) -> list[dict[str, Any]]:
         """Return result rows from a real BigQuery query job."""
-        try:
-            from google.cloud import bigquery
-        except ImportError as exc:
-            raise RuntimeError("Install google-cloud-bigquery to use the BigQuery query executor") from exc
-
-        client = bigquery.Client(project=self.project_id or None)
         log.info("Executing query against BigQuery (%d chars)", len(sql))
-        return [dict(row) for row in client.query(sql).result()]
+        return bigquery_io.run_query(sql, project=self.project_id or None)
 
 
 class SqliteQueryExecutor:

@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from src import bigquery_io
 from src.sql_processing import type_family
 from tests.audits._common import configure_logging as _configure_logging
 from tests.audits._common import load_json as _load_json
@@ -257,11 +258,6 @@ class BigQueryMetadataAdapter:
         """Return BigQuery column metadata for the target table."""
         if side != "bigquery":
             raise ValueError("BigQueryMetadataAdapter can only serve the bigquery side")
-        try:
-            from google.cloud import bigquery
-        except ImportError as exc:
-            raise RuntimeError("Install google-cloud-bigquery to use the BigQuery metadata adapter") from exc
-
         project = pair.bigquery_project or self.config.get("project_id", "")
         dataset = pair.bigquery_dataset
         _assert_safe_bigquery_identifier(project, "bigquery_project")
@@ -278,21 +274,15 @@ class BigQueryMetadataAdapter:
             dataset,
             pair.bigquery_table,
         )
-        client = bigquery.Client(project=project)
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("table_name", "STRING", pair.bigquery_table),
-            ]
-        )
-        rows = list(client.query(query, job_config=job_config).result())
+        rows = bigquery_io.run_query(query, project=project, params={"table_name": pair.bigquery_table})
         return [
             ColumnMetadata(
-                name=str(row.column_name),
-                raw_type=str(row.data_type or ""),
-                type_family=type_family(str(row.data_type or "")),
-                nullable=str(row.is_nullable).upper() == "YES",
-                ordinal=_optional_int(row.ordinal_position),
-                **_bigquery_numeric_shape(str(row.data_type or "")),
+                name=str(row["column_name"]),
+                raw_type=str(row["data_type"] or ""),
+                type_family=type_family(str(row["data_type"] or "")),
+                nullable=str(row["is_nullable"]).upper() == "YES",
+                ordinal=_optional_int(row["ordinal_position"]),
+                **_bigquery_numeric_shape(str(row["data_type"] or "")),
             )
             for row in rows
         ]
@@ -309,11 +299,6 @@ class BigQueryMetadataAdapter:
             raise ValueError("BigQueryMetadataAdapter can only serve the bigquery side")
         if not columns or limit <= 0:
             return {}
-        try:
-            from google.cloud import bigquery
-        except ImportError as exc:
-            raise RuntimeError("Install google-cloud-bigquery to use the BigQuery metadata adapter") from exc
-
         project = pair.bigquery_project or self.config.get("project_id", "")
         dataset = pair.bigquery_dataset
         table = pair.bigquery_table
@@ -322,13 +307,8 @@ class BigQueryMetadataAdapter:
         _assert_safe_bigquery_identifier(table, "bigquery_table")
         column_sql = ", ".join(_quote_bigquery_identifier(column.name) for column in columns)
         query = f"SELECT {column_sql} FROM `{project}.{dataset}.{table}` LIMIT @row_limit"
-        client = bigquery.Client(project=project)
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("row_limit", "INT64", int(limit)),
-            ]
-        )
-        rows = [tuple(row.values()) for row in client.query(query, job_config=job_config).result()]
+        result = bigquery_io.run_query(query, project=project, params={"row_limit": int(limit)})
+        rows = [tuple(row.values()) for row in result]
         return _summarize_samples(columns, rows)
 
 
