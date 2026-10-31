@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
 from src.mock_environment import bootstrap_mock_environment, connect_sqlite, load_demo_script
 from src.execution import find_previous_results, list_sql_scripts, load_report_json, run_sql_batch, run_sql_file
 from src.pipeline_config import load_pipeline_config, with_overrides
-from src.pipelines.oracle_to_bigquery import run
+from src.config import ROOT_DIR
+from src.pipelines.oracle_to_bigquery import LATEST_RUN_REPORT_NAME, run
 from src.preflight import refresh_schema_compatibility
 from src.table_registry import TableMapping, list_column_mappings
 from src.pipelines.oracle_to_bigquery import main as pipeline_main
@@ -219,3 +221,15 @@ def test_cli_single_file_and_batch_execution(tmp_path, capsys) -> None:
 
     assert batch_exit == 0
     assert "scripts=1" in batch_output
+
+
+def test_run_writes_a_stable_latest_report_the_audit_templates_read(tmp_path) -> None:
+    config = with_overrides(load_pipeline_config(), use_local_hub=False, output_dir=str(tmp_path), trace_enabled=False)
+
+    report = run(pipeline_config=config)
+
+    latest = tmp_path / LATEST_RUN_REPORT_NAME
+    assert latest.read_text(encoding="utf-8") == Path(report.artifacts["run_report_json"]).read_text(encoding="utf-8")
+    for template in ("query_cost_audit_config.json", "query_optimization_loop_config.json"):
+        audit_config = json.loads((ROOT_DIR / "tests" / "audits" / template).read_text(encoding="utf-8"))
+        assert Path(audit_config["input"]["path"]).name == LATEST_RUN_REPORT_NAME

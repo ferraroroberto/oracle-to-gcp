@@ -246,3 +246,69 @@ def test_run_optimization_skips_llm_when_disabled(tmp_path: Path) -> None:
     assert results[0].stop_reason == "max_iterations"
     assert len(results[0].iterations) == 1
     assert results[0].final_sql == "SELECT 1"
+
+
+class _RecordingExecutor(_MapExecutor):
+    """Records every statement it is asked to run."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.executed: list[str] = []
+
+    def execute(self, sql: str) -> list[dict]:
+        self.executed.append(sql)
+        return super().execute(sql)
+
+
+def _optimize(query: QueryInput, estimator, executor, llm_client):
+    return optimize_query(
+        query,
+        estimator=estimator,
+        executor=executor,
+        price_per_tib=_PRICE_PER_TIB,
+        llm_client=llm_client,
+        llm_config={},
+        max_iterations=3,
+        min_improvement_pct=1.0,
+        diminishing_returns_streak=2,
+    )
+
+
+def test_ddl_statement_is_never_executed_or_rewritten() -> None:
+    """DDL/DML return no rows, so an empty-vs-empty comparison would accept any rewrite."""
+    ddl = "CREATE OR REPLACE TABLE t2 AS SELECT a, SUM(b) AS b FROM t GROUP BY a"
+    executor = _RecordingExecutor()
+    llm_client = _SequentialFakeLLMClient(["CREATE OR REPLACE TABLE t2 AS SELECT 1 AS a"])
+
+    result = _optimize(_query(ddl), _MapEstimator({ddl: 100}), executor, llm_client)
+
+    assert result.stop_reason == "non_select_statement"
+    assert result.final_sql == ddl
+    assert executor.executed == []
+    assert llm_client.calls == 0
+
+
+def test_select_behind_comments_and_parentheses_still_enters_the_loop() -> None:
+    sql = "-- top customers\n/* hint */ (SELECT a FROM t)"
+    executor = _RecordingExecutor()
+
+    result = _optimize(_query(sql), _MapEstimator({sql: 100}), executor, _SequentialFakeLLMClient([""]))
+
+    assert result.stop_reason == "llm_error"
+    assert executor.executed == [sql]
+
+
+def test_non_select_candidate_is_rejected_before_execution() -> None:
+    candidate = "DROP TABLE t"
+    executor = _RecordingExecutor()
+
+    result = _optimize(
+        _query(),
+        _MapEstimator({BASELINE_SQL: 100, candidate: 1}),
+        executor,
+        _SequentialFakeLLMClient([candidate]),
+    )
+
+    assert result.stop_reason == "non_select_candidate"
+    assert result.final_sql == BASELINE_SQL
+    assert executor.executed == [BASELINE_SQL]

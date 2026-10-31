@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -74,7 +75,7 @@ def render() -> None:
     with config_tab:
         _render_connection_configuration_tab(Path(config_path), pipeline_config)
     with table_tab:
-        _render_table_correspondence_tab()
+        _render_table_correspondence_tab(pipeline_config.execution.table_registry_path)
     with raw_tab:
         _render_configuration_tab(Path(config_path), pipeline_config)
 
@@ -98,17 +99,31 @@ def _render_demo_tab(pipeline_config, editable: bool = True) -> None:
     _render_active_config(active_config)
 
     if st.button("Run demo translation", type="primary", key="demo_run_translation"):
-        clear_log_buffer()
-        log.info("UI: starting demo Oracle to BigQuery translation")
-        try:
-            report = stream_to_streamlit(
-                lambda: oracle_to_bigquery.run(script=script, pipeline_config=active_config)
-            )
-        except Exception:
-            log.exception("Demo translation run failed")
-            st.error("Translation run failed. See the log panel above.")
+        if not _demo_run_lock().acquire(blocking=False):
+            st.warning("Another demo run is in progress. Wait for it to finish, then run again.")
             return
-        _render_report(report)
+        try:
+            _run_demo_translation(script, active_config)
+        finally:
+            _demo_run_lock().release()
+
+
+@st.cache_resource
+def _demo_run_lock() -> threading.Lock:
+    """One lock for every session of this server process (runs share one output directory)."""
+    return threading.Lock()
+
+
+def _run_demo_translation(script: str, active_config) -> None:
+    clear_log_buffer()
+    log.info("UI: starting demo Oracle to BigQuery translation")
+    try:
+        report = stream_to_streamlit(lambda: oracle_to_bigquery.run(script=script, pipeline_config=active_config))
+    except Exception:
+        log.exception("Demo translation run failed")
+        st.error("Translation run failed. See the log panel above.")
+        return
+    _render_report(report)
 
 
 def _render_execution_tab(pipeline_config) -> None:
@@ -176,8 +191,12 @@ def _render_connection_configuration_tab(config_path: Path, pipeline_config) -> 
         col1, col2, col3 = st.columns(3)
         gcp["project_id"] = col1.text_input("GCP project", value=gcp["project_id"], key="cfg_gcp_project")
         gcp["location"] = col2.text_input("GCP location", value=gcp["location"], key="cfg_gcp_location")
+        gcp_auth_modes = ["mock", "application_default", "oauth", "service_account"]
         gcp["auth_mode"] = col3.selectbox(
-            "GCP auth mode", ["mock", "application_default", "oauth", "service_account"], key="cfg_gcp_auth"
+            "GCP auth mode",
+            gcp_auth_modes,
+            index=gcp_auth_modes.index(gcp["auth_mode"]) if gcp.get("auth_mode") in gcp_auth_modes else 0,
+            key="cfg_gcp_auth",
         )
         col1, col2, col3 = st.columns(3)
         bq["project_id"] = col1.text_input("BigQuery project", value=bq["project_id"], key="cfg_bq_project")
@@ -215,9 +234,9 @@ def _render_connection_configuration_tab(config_path: Path, pipeline_config) -> 
         st.json(results)
 
 
-def _render_table_correspondence_tab() -> None:
+def _render_table_correspondence_tab(registry_path: str) -> None:
     st.caption("Maintain the durable Oracle↔BigQuery correspondence registry. Import/export uses CSV for easy spreadsheet editing.")
-    rows = list_mappings()
+    rows = list_mappings(registry_path)
     st.download_button(
         "Download CSV template",
         data=template_csv(),
@@ -228,7 +247,7 @@ def _render_table_correspondence_tab() -> None:
     if rows:
         st.download_button(
             "Export current registry CSV",
-            data=export_csv(),
+            data=export_csv(registry_path),
             file_name="table_correspondence.csv",
             mime="text/csv",
             key="export_registry_csv",
@@ -240,14 +259,14 @@ def _render_table_correspondence_tab() -> None:
     uploaded = st.file_uploader("Import correspondence CSV", type=["csv"], key="import_registry_csv")
     if uploaded is not None and st.button("Import CSV", type="primary", key="import_registry_button"):
         try:
-            count = import_csv(uploaded.getvalue().decode("utf-8"))
+            count = import_csv(uploaded.getvalue().decode("utf-8"), registry_path)
         except Exception as exc:
             st.error(f"Could not import CSV: {exc}")
         else:
             st.success(f"Imported {count} row(s). Refresh the app to see the updated registry.")
 
     with st.expander("Schema compatibility preflight", expanded=False):
-        column_rows = list_column_mappings()
+        column_rows = list_column_mappings(path=registry_path)
         if not column_rows:
             st.info("No column compatibility rows yet. Run a demo or file execution to refresh schema preflight metadata.")
         else:
@@ -284,7 +303,8 @@ def _render_table_correspondence_tab() -> None:
                         oracle_reachable=oracle_reachable,
                         bigquery_reachable=bq_reachable,
                         notes=notes,
-                    )
+                    ),
+                    registry_path,
                 )
                 st.success("Saved row. Refresh the app to see the updated registry.")
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -253,6 +254,33 @@ def _measure_baseline(
     return baseline, baseline_rows, execution_error
 
 
+def _skip_non_select(query: QueryInput, estimator: CostEstimator, price_per_tib: float) -> QueryOptimizationResult:
+    """Leave a DDL/DML statement at its baseline, estimated but never executed."""
+    baseline_bytes, estimate_error = _safe_estimate(estimator, query.sql)
+    baseline_cost = _cost_usd(baseline_bytes, price_per_tib)
+    note = "baseline (not executed: only plain SELECT statements have result rows to validate a rewrite against)"
+    if estimate_error:
+        note += f" (estimate error: {estimate_error})"
+    baseline = OptimizationIteration(
+        iteration=0,
+        sql=query.sql,
+        estimated_bytes_processed=baseline_bytes,
+        estimated_cost_usd=baseline_cost,
+        accepted=True,
+        validation_matched=None,
+        marginal_improvement_pct=None,
+        note=note,
+    )
+    return _build_result(
+        query,
+        baseline_cost=baseline_cost,
+        final_cost=baseline_cost,
+        final_sql=query.sql,
+        stop_reason="non_select_statement",
+        iterations=[baseline],
+    )
+
+
 @dataclass(slots=True)
 class _CandidateOutcome:
     """A candidate's iteration record, plus why the loop must stop (empty when it can go on)."""
@@ -275,6 +303,10 @@ def _evaluate_candidate(
     current_cost: float,
 ) -> _CandidateOutcome:
     """Estimate, execute and fingerprint-validate one candidate against the last accepted result set."""
+    if not _is_plain_select(candidate_sql):
+        # Executing a DDL/DML candidate would run it for real and leave no rows to validate.
+        rejected = _rejected_iteration(iteration, candidate_sql, 0, 0.0, "not_a_select: candidate is not a plain SELECT")
+        return _CandidateOutcome(rejected, "non_select_candidate", [], 0.0)
     candidate_bytes, estimate_error = _safe_estimate(estimator, candidate_sql)
     if estimate_error:
         rejected = _rejected_iteration(iteration, candidate_sql, 0, 0.0, f"estimate_error: {estimate_error}")
@@ -334,6 +366,8 @@ def optimize_query(
     diminishing_returns_streak: int,
 ) -> QueryOptimizationResult:
     """Run the bounded optimize-execute-validate loop for one query."""
+    if not _is_plain_select(query.sql):
+        return _skip_non_select(query, estimator, price_per_tib)
     baseline, baseline_rows, execution_error = _measure_baseline(query, estimator, executor, price_per_tib)
     baseline_cost = baseline.estimated_cost_usd
     iterations = [baseline]
@@ -449,6 +483,18 @@ def write_report(path: Path, script_id: str, results: list[QueryOptimizationResu
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+_LEADING_NOISE = re.compile(r"\A(?:\s+|\(|--[^\n]*|/\*.*?\*/)+", re.DOTALL)
+
+
+def _is_plain_select(sql: str) -> bool:
+    """Whether ``sql`` is a read-only query whose result rows fingerprint what it computes.
+
+    DDL and DML return no rows, so an empty-vs-empty comparison would pass any rewrite.
+    """
+    body = _LEADING_NOISE.sub("", sql, count=1)
+    return body[:6].upper() == "SELECT" or body[:4].upper() == "WITH"
 
 
 def _safe_estimate(estimator: CostEstimator, sql: str) -> tuple[int, str]:
