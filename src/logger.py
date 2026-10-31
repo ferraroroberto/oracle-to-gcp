@@ -28,14 +28,14 @@ import logging
 import sys
 import threading
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
+
+from src.config import LOG_DIR
 
 # ---------------------------------------------------------------------------
 # Paths & constants
 # ---------------------------------------------------------------------------
-_LOG_DIR = Path(__file__).resolve().parent.parent / "data" / "logs"
-_LOG_DIR.mkdir(parents=True, exist_ok=True)
-_LOG_FILE = _LOG_DIR / "app.log"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+_LOG_FILE = LOG_DIR / "app.log"
 
 _FMT = "%(asctime)s  %(levelname)-7s  %(name)-22s  %(message)s"
 _DATEFMT = "%H:%M:%S"
