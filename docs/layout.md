@@ -9,12 +9,11 @@ Where code goes. The root layout is checked against the `streamlit` shape declar
 - `tests/` — unit tests for `src/`; `e2e/` boots Streamlit headlessly for the smoke test; `audits/` holds the standalone audit tools (schema compatibility, query cost, query optimization loop) with their config templates. They are runnable modules (`python -m tests.audits.<name>`), not test suites; the unit tests that cover them sit beside the other tests.
 - `scripts/` — the pre-ship gate (`verify-before-ship.ps1`) and the vendored ratchets with their wrappers.
 - `data/` — runtime input, output and log folders; contents are not tracked.
+- `config/` — `pipeline.json`, the pipeline defaults read at import time, and `examples/`, the fictitious demo Oracle script and source-to-target mapping registry the UI and CLI load as sample input. Configuration and sample data, not code, so neither has a home in `src/`; `config/` is in the `streamlit` preset.
 - `docs/` — durable reference: architecture rationale and diagram, design records, this file.
 
 ## Declared exceptions (`extra_roots`)
 
-These roots sit outside the `streamlit` preset on purpose:
+This root sits outside the `streamlit` preset on purpose:
 
-- `config/` — `pipeline.json`, the pipeline defaults read at import time. Configuration, not code, so it has no home in `src/`.
-- `examples/` — the fictitious demo Oracle script and the source-to-target mapping registry the UI and CLI load as sample input.
 - `semantic_layer/` — a self-contained research spike with its own package (`sl/`), definitions (`domains/`, `schema/`, `catalog/`, `harvest/`, `queries/`, `evals/`), generated `build/` and its own `tests/`. It never imports from `src/` or `tests/audits/` so it can be lifted out whole; that independence is why it is a second root and not a subpackage of `src/`.

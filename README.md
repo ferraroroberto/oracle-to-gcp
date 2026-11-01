@@ -61,8 +61,8 @@ The shared link runs in shared mode (`ORACLE_TO_GCP_SHARED_MODE=1`, set by both 
 
 ## Mock Inputs
 
-- Oracle demo script: `examples/demo_oracle_script.sql`
-- Legacy seed mapping registry: `examples/mapping_registry.json`
+- Oracle demo script: `config/examples/demo_oracle_script.sql`
+- Legacy seed mapping registry: `config/examples/mapping_registry.json`
 - Durable correspondence registry: `data/table_registry.db`
 - Runtime copies: `data/input/`
 - Generated artifacts: `data/output/mock_run/`
@@ -294,9 +294,11 @@ app/
   views/
     welcome.py                   Overview page
     translator_demo.py           Demo, file execution, config, and result loader UI
-examples/
-  demo_oracle_script.sql         Fictitious Oracle script
-  mapping_registry.json          Source-to-target table mapping
+config/
+  pipeline.json                  Pipeline defaults
+  examples/
+    demo_oracle_script.sql       Fictitious Oracle script
+    mapping_registry.json        Source-to-target table mapping
 src/
   execution.py                   File-backed single/batch execution helpers
   connections.py                 Mock-safe connection test helpers

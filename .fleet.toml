@@ -17,7 +17,8 @@ description  = "Oracle SQL → BigQuery translator prototype with mock validatio
 # scripts/structure_ratchet.py; ids and presets: project-scaffolding
 # docs/structure-ratchet.md.
 shape       = "streamlit"
-extra_roots = ["config", "examples", "semantic_layer"]
+# semantic_layer: a self-contained spike with its own `python -m semantic_layer` package that must be liftable out whole, so it stays a second root.
+extra_roots = ["semantic_layer"]
 
 # Vendored byte-for-byte from project-scaffolding. sha = the source repo commit
 # the copy was taken from; /propagate-vendored hash-verifies + bumps.
@@ -130,8 +131,8 @@ rules    = ["no-window", "logging-not-print", "no-drive-path"]
 # this table only drives this skill's own routed slice, not the gate's time.
 # Conservative starter: only plainly inert paths (docs, the standalone
 # tests/audits/ + other non-e2e tests, the self-contained semantic_layer/
-# spike) are "none". app/ imports from src/, config/ and examples/ (demo data
-# the UI loads), so those stay unclassified and fail safe to "full".
+# spike) are "none". app/ imports from src/ and config/ (incl. the demo data
+# in config/examples/ the UI loads), so those stay unclassified and fail safe to "full".
 [e2e]
 static_pytest_target = "tests/e2e/test_smoke.py"
 static_browsers       = ["chromium"]

@@ -16,7 +16,7 @@ DATA_DIR = ROOT_DIR / "data"
 INPUT_DIR = DATA_DIR / "input"
 OUTPUT_DIR = DATA_DIR / "output"
 LOG_DIR = DATA_DIR / "logs"
-EXAMPLES_DIR = ROOT_DIR / "examples"
+EXAMPLES_DIR = ROOT_DIR / "config" / "examples"
 
 APP_NAME = os.getenv("ORACLE_TO_GCP_APP_NAME", "Oracle to GCP")
 # Set by launch_server.bat / launch_server.sh: the app is reachable through a
