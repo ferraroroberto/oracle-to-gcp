@@ -51,10 +51,10 @@ def test_real_rules_route_representative_paths() -> None:
     assert tier("README.md") == "skip"
 
     # Unmatched paths the app does read from (src/, config/pipeline.json,
-    # examples/ demo data) fail safe to full rather than being guessed "none".
+    # config/examples/ demo data) fail safe to full rather than being guessed "none".
     assert tier("src/bigquery_io.py") == "full"
     assert tier("config/pipeline.json") == "full"
-    assert tier("examples/demo_oracle_script.sql") == "full"
+    assert tier("config/examples/demo_oracle_script.sql") == "full"
 
     # Mixed real diff (app + an inert doc) -> full.
     assert tier("app/app.py", "docs/architecture.mmd") == "full"

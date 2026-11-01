@@ -14,7 +14,7 @@ def test_data_dirs_are_anchored_under_root() -> None:
     assert config.INPUT_DIR == config.DATA_DIR / "input"
     assert config.OUTPUT_DIR == config.DATA_DIR / "output"
     assert config.LOG_DIR == config.DATA_DIR / "logs"
-    assert config.EXAMPLES_DIR == config.ROOT_DIR / "examples"
+    assert config.EXAMPLES_DIR == config.ROOT_DIR / "config" / "examples"
 
 
 def test_root_dir_is_the_repo_root() -> None:
