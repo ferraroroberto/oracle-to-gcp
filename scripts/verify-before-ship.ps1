@@ -43,10 +43,16 @@
                            logging-not-print, no-drive-path) than
                            .conventions-ratchet-baseline.json. Whole tree, never routed;
                            exit 3 (not confirmed) fails like any non-zero exit.
+     10b. runtime write ratchet — no Python file with more write targets resolving under a
+                           code folder than .runtime-write-ratchet-baseline.json; a new
+                           target it cannot resolve is exit 3 (not confirmed), which fails
+                           like any non-zero exit.
      11. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
      12. pytest       — unit + headless e2e (auto-boots Streamlit per its fixture),
-                           including semantic_layer/tests
+                           including semantic_layer/tests; bracketed by the runtime write
+                           probe (--snapshot before, --probe after): any untracked or
+                           ignored file the run left under a code folder fails
 
     Ruff config lives in pyproject.toml. This script only sequences the tools.
     It anchors to the repo root, so run it from
@@ -93,10 +99,16 @@ Invoke-Stage "dead-code ratchet"                  { & $py scripts/dead_code_ratc
 Invoke-Stage "static ratchet"                     { & $py scripts/static_ratchet.py }
 Invoke-Stage "comment ratchet"                    { & $py scripts/comment_ratchet.py }
 Invoke-Stage "conventions ratchet"                { & $py scripts/conventions_ratchet.py }
+Invoke-Stage "runtime write ratchet" { & $py scripts/runtime_write_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
+# Runtime write probe, first half: what already sits untracked or ignored under
+# the code folders, so the probe after the tests names only what they wrote.
+$runtimeSnapshot = Join-Path ([IO.Path]::GetTempPath()) "runtime-write-snapshot-$PID.json"
+Invoke-Stage "runtime write probe (snapshot)" { & $py scripts/runtime_write_ratchet.py --snapshot $runtimeSnapshot }
 Invoke-Stage "pytest (unit + e2e)"                { & $py -m pytest }
+Invoke-Stage "runtime write probe" { & $py scripts/runtime_write_ratchet.py --probe $runtimeSnapshot }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green
