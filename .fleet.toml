@@ -134,8 +134,10 @@ rules    = ["no-window", "logging-not-print", "no-drive-path"]
 # (--snapshot before, --probe after) and fails on any untracked or ignored file the
 # run left under a code folder. Mechanism: project-scaffolding docs/runtime-write-ratchet.md.
 [runtime_write_ratchet]
-enabled  = true
-baseline = ".runtime-write-ratchet-baseline.json"
+enabled      = true
+baseline     = ".runtime-write-ratchet-baseline.json"
+# The semantic-layer toolkit is code too (the extra root kept beside src/), not only src, app and scripts.
+code_folders = ["src", "app", "scripts", "semantic_layer"]
 
 # [e2e] -- diff-proportionate e2e routing (project-scaffolding docs/e2e-routing.md).
 # scripts/classify_e2e.py loads this table and maps the changed-file set to a
