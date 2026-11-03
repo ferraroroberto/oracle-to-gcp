@@ -11,6 +11,7 @@ display_name = "Oracle to GCP"
 layer        = "working-pipe"
 icon         = "☁️"
 description  = "Oracle SQL → BigQuery translator prototype with mock validation."
+depends_on   = ["local-llm-hub"]
 
 # Which canonical tree the root layout is held to (project-scaffolding
 # docs/repo-layout.md). Each extra root and its reason: docs/layout.md. Read by
