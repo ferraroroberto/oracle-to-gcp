@@ -26,7 +26,7 @@ One pre-ship gate runs byte-compile, `ruff`, the vendored ratchets below, the se
 - dead-code (`scripts/dead_code_ratchet.py`): a new Python function, class or method that nothing in the tree refers to.
 - static (`scripts/static_ratchet.py`): a duplicated block, an unused import or variable, or a curated ruff bug/security finding; needs `npx` and `ruff`, and a missing one is NOT CONFIRMED, never a pass.
 - comment (`scripts/comment_ratchet.py`): a product-code file carries more `#NNN` issue references in comments than recorded.
-- conventions (`scripts/conventions_ratchet.py`): a Python file has more hits of an enabled rule (`no-window`, `logging-not-print`, `no-drive-path`) than recorded; a call that must break one carries a reasoned `# <rule>-exempt: ...` marker.
+- conventions (`scripts/conventions_ratchet.py`): a Python file has more hits of an enabled rule (`no-window`, `logging-not-print`, `no-drive-path`, `subprocess-timeout`) than recorded; a call that must break one carries a reasoned `# <rule>-exempt: ...` marker.
 
 ```powershell
 & .\scripts\verify-before-ship.ps1
