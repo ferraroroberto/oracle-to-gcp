@@ -2,5 +2,13 @@
   "version": 1,
   "band": {"files": 0, "functions": 2},
   "root_extras": ["semantic_layer"],
+  "shape_contract": {
+    "root_files": [],
+    "redundant": [],
+    "folder_types": {
+      "config/examples": 1,
+      "tests/audits": 3
+    }
+  },
   "entries": []
 }
