@@ -16,7 +16,6 @@
     {"key": "src/mock_environment.py", "counts": {"unresolved": 4}},
     {"key": "src/pipeline_config.py", "counts": {"unresolved": 2}},
     {"key": "src/pipelines/oracle_to_bigquery.py", "counts": {"unresolved": 4}},
-    {"key": "src/sqlite_db.py", "counts": {"unresolved": 1}},
     {"key": "src/table_registry.py", "counts": {"unresolved": 1}},
     {"key": "src/trace.py", "counts": {"unresolved": 1}}
   ]
