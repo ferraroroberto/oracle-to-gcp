@@ -39,7 +39,7 @@ from tests.audits.query_cost_audit import (
 
 log = logging.getLogger("query_optimization_loop")
 
-DEFAULT_CONFIG_PATH = Path(__file__).with_name("query_optimization_loop_config.json")
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "audits" / "query_optimization_loop_config.json"
 
 DEFAULT_LLM_SYSTEM_MESSAGE = (
     "You are a BigQuery cost-optimization expert. Given a validated SQL query and its "

@@ -28,7 +28,7 @@ from tests.audits._common import load_json as _load_json
 
 log = logging.getLogger("query_cost_audit")
 
-DEFAULT_CONFIG_PATH = Path(__file__).with_name("query_cost_audit_config.json")
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "audits" / "query_cost_audit_config.json"
 BYTES_PER_TIB = 2**40
 
 DEFAULT_LLM_SYSTEM_MESSAGE = (

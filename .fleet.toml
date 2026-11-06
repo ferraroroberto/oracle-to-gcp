@@ -156,7 +156,7 @@ code_folders = ["src", "app", "scripts", "semantic_layer"]
 # Conservative starter: only plainly inert paths (docs, the standalone
 # tests/audits/ + other non-e2e tests, the self-contained semantic_layer/
 # spike) are "none". app/ imports from src/ and config/ (incl. the demo data
-# in config/examples/ the UI loads), so those stay unclassified and fail safe to "full".
+# in data/examples/ the UI loads), so those stay unclassified and fail safe to "full".
 [e2e]
 static_pytest_target = "tests/e2e/test_smoke.py"
 static_browsers       = ["chromium"]
@@ -171,6 +171,9 @@ prefix = "tests/e2e/"
 [[e2e.rule]]
 tier   = "none"
 prefix = "tests/audits/"
+[[e2e.rule]]
+tier   = "none"
+prefix = "config/audits/"
 [[e2e.rule]]
 tier       = "none"
 prefix     = "tests/"

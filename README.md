@@ -61,8 +61,8 @@ The shared link runs in shared mode (`ORACLE_TO_GCP_SHARED_MODE=1`, set by both 
 
 ## Mock Inputs
 
-- Oracle demo script: `config/examples/demo_oracle_script.sql`
-- Legacy seed mapping registry: `config/examples/mapping_registry.json`
+- Oracle demo script: `data/examples/demo_oracle_script.sql`
+- Legacy seed mapping registry: `data/examples/mapping_registry.json`
 - Durable correspondence registry: `data/table_registry.db`
 - Runtime copies: `data/input/`
 - Generated artifacts: `data/output/mock_run/`
@@ -183,13 +183,13 @@ The repository also includes an experimental, config-driven schema audit module 
 The default config template lives at:
 
 ```text
-tests/audits/schema_audit_config.json
+config/audits/schema_audit_config.json
 ```
 
 Run it with:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m tests.audits.schema_compatibility_audit --config tests\audits\schema_audit_config.json
+& .\.venv\Scripts\python.exe -m tests.audits.schema_compatibility_audit --config config\audits\schema_audit_config.json
 ```
 
 By default the production adapters expect Oracle credentials in `ORACLE_USERNAME`, `ORACLE_PASSWORD`, and `ORACLE_DSN`, plus Google Application Default Credentials or `GOOGLE_APPLICATION_CREDENTIALS` for BigQuery. Excel input uses `pandas` and `openpyxl`. The module also ships SQLite adapters for local experiments and tests. Metadata is the source of truth; optional row sampling is recorded only as evidence in the output reports and does not drive compatibility decisions.
@@ -208,7 +208,7 @@ A second experimental, config-driven module runs *after* a run's translated stat
 The default config template lives at:
 
 ```text
-tests/audits/query_cost_audit_config.json
+config/audits/query_cost_audit_config.json
 ```
 
 Every pipeline run also writes a stable copy of its report as `run_report_latest.json` next to the timestamped one; both audit config templates read `data/output/mock_run/run_report_latest.json`, so they work right after a demo run.
@@ -216,7 +216,7 @@ Every pipeline run also writes a stable copy of its report as `run_report_latest
 Run it against a completed run's report with:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m tests.audits.query_cost_audit --config tests\audits\query_cost_audit_config.json
+& .\.venv\Scripts\python.exe -m tests.audits.query_cost_audit --config config\audits\query_cost_audit_config.json
 ```
 
 Two estimator modes are supported in `estimator.mode`:
@@ -243,13 +243,13 @@ The full per-iteration history (candidate SQL, estimated cost, accept/reject dec
 The default config template lives at:
 
 ```text
-tests/audits/query_optimization_loop_config.json
+config/audits/query_optimization_loop_config.json
 ```
 
 Run it against a completed run's report with:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m tests.audits.query_optimization_loop --config tests\audits\query_optimization_loop_config.json
+& .\.venv\Scripts\python.exe -m tests.audits.query_optimization_loop --config config\audits\query_optimization_loop_config.json
 ```
 
 It reuses the query cost audit's `estimator.mode` (`mock` / `bigquery`) and adds an `executor.mode`, the source of each candidate's materialized result rows for the correctness gate:
@@ -296,9 +296,10 @@ app/
     translator_demo.py           Demo, file execution, config, and result loader UI
 config/
   pipeline.json                  Pipeline defaults
-  examples/
-    demo_oracle_script.sql       Fictitious Oracle script
-    mapping_registry.json        Source-to-target table mapping
+  audits/
+    schema_audit_config.json     Config template for the schema audit
+    query_cost_audit_config.json Config template for the query cost audit
+    query_optimization_loop_config.json Config template for the optimization loop
 src/
   execution.py                   File-backed single/batch execution helpers
   connections.py                 Mock-safe connection test helpers
@@ -315,11 +316,12 @@ src/
   pipelines/oracle_to_bigquery.py End-to-end orchestrator
 tests/audits/
   schema_compatibility_audit.py   Standalone Oracle/BQ schema audit experiment
-  schema_audit_config.json        Config template for the schema audit
   query_cost_audit.py             Standalone post-migration query cost audit
-  query_cost_audit_config.json    Config template for the query cost audit
   query_optimization_loop.py      Standalone bounded LLM cost-optimization loop
-  query_optimization_loop_config.json Config template for the optimization loop
+data/
+  examples/
+    demo_oracle_script.sql       Fictitious Oracle script
+    mapping_registry.json        Source-to-target table mapping
 semantic_layer/                  Team semantic layer spike (self-contained; see its README)
   sl/                            The `sl` toolkit (python -m semantic_layer)
   domains/ schema/ catalog/      Curated definitions, JSON Schemas, generated catalog
