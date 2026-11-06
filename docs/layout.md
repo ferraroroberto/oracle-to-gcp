@@ -5,7 +5,7 @@ Where code goes. The root layout is checked against the `streamlit` shape declar
 ## Top-level folders
 
 - `app/` — Streamlit UI only. `app.py` handles page config, shared state, the sidebar and routing; `views/` holds one file per page (`welcome.py`, `translator_demo.py`, `process_map.py`); `styles/` holds the stylesheet. `log_panel.py` is the shared log widget.
-- `src/` — logic layer, never imports `streamlit` or `app`. Flat modules for config, connections, execution, mock environment, SQL processing, translation, validation, preflight, lineage and the GCS/BigQuery IO helpers; `pipelines/` holds the end-to-end orchestrator (`oracle_to_bigquery.py`).
+- `src/` — logic layer, never imports `streamlit` or `app`. Flat modules for config, connections, the one SQLite opener (`sqlite_db.py`), execution, mock environment, SQL processing, translation, validation, preflight, lineage and the GCS/BigQuery IO helpers; `pipelines/` holds the end-to-end orchestrator (`oracle_to_bigquery.py`).
 - `tests/` — unit tests for `src/`; `e2e/` boots Streamlit headlessly for the smoke test; `audits/` holds the standalone audit tools (schema compatibility, query cost, query optimization loop) with their config templates. They are runnable modules (`python -m tests.audits.<name>`), not test suites; the unit tests that cover them sit beside the other tests.
 - `scripts/` — the pre-ship gate (`verify-before-ship.ps1`) and the vendored ratchets with their wrappers.
 - `data/` — runtime input, output and log folders; contents are not tracked.

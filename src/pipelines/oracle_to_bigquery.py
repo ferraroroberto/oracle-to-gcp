@@ -16,10 +16,10 @@ from src import get_logger
 from src.lineage import render_lineage_markdown
 from src.mock_environment import (
     bootstrap_mock_environment,
-    connect_sqlite,
     load_demo_script,
     load_mapping_registry,
 )
+from src.sqlite_db import connect_sqlite
 from src.pipeline_config import (
     PipelineConfig,
     load_pipeline_config,

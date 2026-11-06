@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from src.mock_environment import bootstrap_mock_environment, connect_sqlite, load_demo_script
+from src.mock_environment import bootstrap_mock_environment, load_demo_script
+from src.sqlite_db import connect_sqlite
 from src.execution import find_previous_results, list_sql_scripts, load_report_json, run_sql_batch, run_sql_file
 from src.pipeline_config import load_pipeline_config, with_overrides
 from src.config import ROOT_DIR
