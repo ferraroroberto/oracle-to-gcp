@@ -61,6 +61,15 @@ the one SQLite opener: connect_sqlite, transaction (commit, close)"]
   MOCKENV --> SQLITEDB
   RUN --> SQLITEDB
 
+  FSWRITE["fs_write.py
+the one writer of caller-chosen files and folders: ensure_dir, write_text_file, copy_file"]
+  EXEC --> FSWRITE
+  MOCKENV --> FSWRITE
+  RUN --> FSWRITE
+  TRACE --> FSWRITE
+  PIPECFG --> FSWRITE
+  TABLEREG --> FSWRITE
+
   LLMCLIENT["llm_client.py\nLocalHubClient — openai_chat or anthropic_messages, by request_format"]
   SECRETS["secrets.py\nenv secret lookup + redaction"]
   TRANSLATE --> LLMCLIENT

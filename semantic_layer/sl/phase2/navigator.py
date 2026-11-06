@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from semantic_layer.sl.build import model_document
-from semantic_layer.sl.common import Layer, read_json
+from semantic_layer.sl.common import Layer, read_json, write_text
 
 
 def _payload(layer: Layer) -> dict[str, Any]:
@@ -36,9 +36,7 @@ def render(layer: Layer) -> str:
 
 def write(layer: Layer) -> Path:
     path = layer.build / "navigator.html"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render(layer), encoding="utf-8")
-    return path
+    return write_text(path, render(layer))
 
 
 TEMPLATE = """<!doctype html>

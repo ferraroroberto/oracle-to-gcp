@@ -23,7 +23,7 @@ import sqlglot
 from sqlglot import exp
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import KIND_DIRS, Layer, LayerError, read_json, read_yaml, write_json, write_yaml
+from semantic_layer.sl.common import KIND_DIRS, Layer, LayerError, read_json, read_yaml, write_json, write_text, write_yaml
 from semantic_layer.sl.model import Model, load_model
 from semantic_layer.sl.platforms import MockDuckDBPlatform, get_platform
 from semantic_layer.sl.sqlutil import canonical, is_time_equality, literals, predicate_set, split_conjuncts
@@ -731,8 +731,7 @@ def _write_drafts(layer: Layer, model: Model, catalog: catalog_mod.Catalog, answ
             path = layer.domains / team / KIND_DIRS["template"] / rel_name
             if path.exists() and not overwrite:
                 raise LayerError(f"{path} exists — pass --overwrite to replace it")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
+            write_text(path, text)
             written.append(path)
 
     for record in definitions:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import shutil
 
-from semantic_layer.sl.common import Layer, write_yaml
+from semantic_layer.sl.common import Layer, ensure_dir, write_text, write_yaml
 
 CONTENT_DIRS = ("domains", "catalog", "queries", "build", "harvest/sessions")
 
@@ -23,8 +23,7 @@ def clean(layer: Layer) -> int:
         if folder.exists():
             removed += sum(1 for p in folder.rglob("*") if p.is_file())
             shutil.rmtree(folder)
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / ".gitkeep").write_text("", encoding="utf-8")
+        write_text(ensure_dir(folder) / ".gitkeep", "")
     golden = layer.evals / "golden_questions.yaml"
     if golden.exists():
         removed += 1

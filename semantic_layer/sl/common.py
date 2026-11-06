@@ -137,15 +137,27 @@ def read_yaml(path: Path) -> Any:
         return yaml.safe_load(handle)
 
 
-def write_yaml(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100, default_flow_style=False)
+def ensure_dir(path: Path) -> Path:
+    """Create ``path`` (and parents) if missing; the toolkit's one directory maker."""
+    # runtime-write-exempt: callers pass a path under the layer root, which the Layer object owns
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def write_text(path: Path, text: str) -> Path:
+    """Write UTF-8 ``text`` to ``path``, creating parent folders; the toolkit's one file writer."""
+    ensure_dir(path.parent)
+    # runtime-write-exempt: callers pass a path under the layer root, which the Layer object owns
     path.write_text(text, encoding="utf-8")
+    return path
+
+
+def write_yaml(path: Path, data: Any) -> None:
+    write_text(path, yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100, default_flow_style=False))
 
 
 def write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    write_text(path, json.dumps(data, indent=2, sort_keys=True, default=str) + "\n")
 
 
 def read_json(path: Path) -> Any:

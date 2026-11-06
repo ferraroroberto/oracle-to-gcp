@@ -18,6 +18,12 @@ log = logging.getLogger(__name__)
 _GCS_URI_RE = re.compile(r"^gs://([^/]+)/(.+)$")
 
 
+def _make_dir(path: Path) -> None:
+    """Create a download destination folder; kept local so the module stays vendorable."""
+    # runtime-write-exempt: the folder is the caller's chosen download destination
+    path.mkdir(parents=True, exist_ok=True)
+
+
 def parse_gcs_uri(gcs_uri: str) -> tuple[str, str]:
     """Split a ``gs://bucket/path`` URI into ``(bucket_name, blob_name)``."""
     match = _GCS_URI_RE.match(gcs_uri)
@@ -58,7 +64,7 @@ def download_file(gcs_uri: str, local_path: str | Path) -> None:
     """Download a single GCS blob to ``local_path``."""
     bucket_name, blob_name = parse_gcs_uri(gcs_uri)
     local_path = Path(local_path)
-    local_path.parent.mkdir(parents=True, exist_ok=True)
+    _make_dir(local_path.parent)
 
     blob = _client().bucket(bucket_name).blob(blob_name)
     if not blob.exists():
@@ -83,7 +89,7 @@ def download_prefix(gcs_prefix_uri: str, local_dir: str | Path) -> int:
     preserving relative paths. Returns the number of files downloaded."""
     bucket_name, prefix = parse_gcs_uri(gcs_prefix_uri.rstrip("/"))
     local_dir = Path(local_dir)
-    local_dir.mkdir(parents=True, exist_ok=True)
+    _make_dir(local_dir)
 
     bucket = _client().bucket(bucket_name)
     count = 0
@@ -94,7 +100,7 @@ def download_prefix(gcs_prefix_uri: str, local_dir: str | Path) -> int:
         if not relative:
             continue
         dest = local_dir / relative
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        _make_dir(dest.parent)
         blob.download_to_filename(str(dest))
         count += 1
         log.info("Downloaded %s to %s", blob.name, dest)

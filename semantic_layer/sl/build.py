@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import PLATFORMS, Layer
+from semantic_layer.sl.common import PLATFORMS, Layer, write_text
 from semantic_layer.sl.model import Definition, Model, jsonable, load_model, references, strip_ref
 
 CHECKED = ("index.jsonl", "model.json", "docs")
@@ -80,9 +80,7 @@ def _index_lines(doc: dict[str, Any]) -> list[str]:
 
 
 def _write(path: Path, text: str) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
-    return path
+    return write_text(path, text if text.endswith("\n") else text + "\n")
 
 
 def _render(doc: dict[str, Any], out: Path) -> list[Path]:

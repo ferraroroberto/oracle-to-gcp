@@ -20,7 +20,7 @@ from typing import Any
 import sqlglot
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import PLATFORMS, Layer, resolve_today, write_json
+from semantic_layer.sl.common import PLATFORMS, Layer, resolve_today, write_json, write_text
 from semantic_layer.sl.model import Model, load_model
 from semantic_layer.sl.platforms import PlatformUnavailable, get_platform
 from semantic_layer.sl.validate import binding_columns, stale_pins
@@ -156,8 +156,7 @@ def _write_issues(layer: Layer, model: Model, definitions: dict[str, Any],
         if catalog_changes:
             lines += ["", "Catalog changes this run:"] + [f"- {c}" for c in catalog_changes]
         path = folder / f"{team}.md"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        write_text(path, "\n".join(lines) + "\n")
         written.append(path.relative_to(layer.root).as_posix())
     return written
 

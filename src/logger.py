@@ -30,11 +30,12 @@ import threading
 from logging.handlers import RotatingFileHandler
 
 from src.config import LOG_DIR
+from src.fs_write import ensure_dir
 
 # ---------------------------------------------------------------------------
 # Paths & constants
 # ---------------------------------------------------------------------------
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+ensure_dir(LOG_DIR)
 _LOG_FILE = LOG_DIR / "app.log"
 
 _FMT = "%(asctime)s  %(levelname)-7s  %(name)-22s  %(message)s"
@@ -126,6 +127,7 @@ def _configure_root() -> None:
     stream.setFormatter(_ColorFormatter(_FMT, _DATEFMT))
     root.addHandler(stream)
 
+    # runtime-write-exempt: _LOG_FILE is LOG_DIR/app.log, and LOG_DIR is data/logs (src/config.py)
     file_h = RotatingFileHandler(
         _LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
     )

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import ROOT_DIR
+from src.fs_write import ensure_dir
 from src.sqlite_db import transaction
 
 DEFAULT_REGISTRY_PATH = ROOT_DIR / "data" / "table_registry.db"
@@ -87,7 +88,7 @@ def registry_path(path: str | Path | None = None) -> Path:
 def init_registry(path: str | Path | None = None) -> Path:
     """Create registry tables if missing."""
     db_path = registry_path(path)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(db_path.parent)
     with transaction(db_path) as conn:
         conn.execute(
             """

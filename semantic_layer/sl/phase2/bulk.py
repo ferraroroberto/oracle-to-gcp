@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import PLATFORMS, Layer, LayerError, read_json, write_json
+from semantic_layer.sl.common import PLATFORMS, Layer, LayerError, read_json, write_json, write_text
 from semantic_layer.sl.harvest import is_period_filter, parse_sql
 from semantic_layer.sl.model import load_model
 from semantic_layer.sl.platforms import get_platform
@@ -133,7 +133,7 @@ def run(layer: Layer, folder: Path | None = None, history: bool = False, dialect
         "query_details": parsed,
     }
     write_json(layer.harvest / "bulk" / "usage.json", report)
-    (layer.harvest / "bulk" / "usage.md").write_text(markdown(report) + "\n", encoding="utf-8")
+    write_text(layer.harvest / "bulk" / "usage.md", markdown(report) + "\n")
     return report
 
 
