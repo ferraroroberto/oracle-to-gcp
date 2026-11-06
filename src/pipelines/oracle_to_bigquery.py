@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 from collections.abc import Callable
 from contextlib import closing
 from dataclasses import asdict
@@ -13,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from src import get_logger
+from src.fs_write import copy_file, write_text_file
 from src.lineage import render_lineage_markdown
 from src.mock_environment import (
     bootstrap_mock_environment,
@@ -234,8 +234,8 @@ def _write_run_artifacts(
     report_path = artifact_dir / f"run_report_{timestamp}.json"
     lineage_path = artifact_dir / "lineage.md"
     script_id = f"demo-{timestamp}"
-    script_path.write_text(final_script + "\n", encoding="utf-8")
-    lineage_path.write_text(render_lineage_markdown(units, script_id=script_id), encoding="utf-8")
+    write_text_file(script_path, final_script + "\n")
+    write_text_file(lineage_path, render_lineage_markdown(units, script_id=script_id))
 
     status = "validated" if all(unit.status == "validated" for unit in units) else "flagged"
     artifacts = {
@@ -260,8 +260,8 @@ def _write_run_artifacts(
     record("Stage 8 artifacts written: %s", artifact_dir)
     recorder.add("artifacts", "written", artifacts)
     recorder.write(trace_path, status=status, pipeline_config=active_config, artifacts=artifacts)
-    report_path.write_text(json.dumps(_report_to_jsonable(report), indent=2), encoding="utf-8")
-    shutil.copyfile(report_path, artifact_dir / LATEST_RUN_REPORT_NAME)
+    write_text_file(report_path, json.dumps(_report_to_jsonable(report), indent=2))
+    copy_file(report_path, artifact_dir / LATEST_RUN_REPORT_NAME)
     return report
 
 

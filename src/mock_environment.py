@@ -7,6 +7,7 @@ from contextlib import closing
 from pathlib import Path
 
 from src.config import EXAMPLES_DIR, INPUT_DIR, OUTPUT_DIR
+from src.fs_write import ensure_dir, write_text_file
 from src.sqlite_db import connect_sqlite
 
 DEMO_SCRIPT_PATH = EXAMPLES_DIR / "demo_oracle_script.sql"
@@ -27,8 +28,8 @@ def load_mapping_registry(path: Path = DEMO_MAPPING_PATH) -> dict[str, str]:
 def bootstrap_mock_environment(run_dir: Path | None = None) -> dict[str, Path]:
     """Create fresh SQLite files that stand in for Oracle and BigQuery."""
     run_dir = run_dir or OUTPUT_DIR / "mock_run"
-    run_dir.mkdir(parents=True, exist_ok=True)
-    INPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ensure_dir(run_dir)
+    ensure_dir(INPUT_DIR)
 
     oracle_path = run_dir / "oracle_mock.db"
     bigquery_path = run_dir / "bigquery_mock.db"
@@ -41,11 +42,8 @@ def bootstrap_mock_environment(run_dir: Path | None = None) -> dict[str, Path]:
 
     script_path = INPUT_DIR / "demo_oracle_script.sql"
     mapping_path = INPUT_DIR / "mapping_registry.json"
-    script_path.write_text(load_demo_script(), encoding="utf-8")
-    mapping_path.write_text(
-        json.dumps(load_mapping_registry(), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    write_text_file(script_path, load_demo_script())
+    write_text_file(mapping_path, json.dumps(load_mapping_registry(), indent=2, sort_keys=True) + "\n")
     return {
         "oracle_db": oracle_path,
         "bigquery_db": bigquery_path,

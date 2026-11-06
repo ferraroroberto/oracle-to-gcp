@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from semantic_layer.sl.common import PLATFORMS, Layer, read_yaml, write_yaml
+from semantic_layer.sl.common import PLATFORMS, Layer, ensure_dir, read_yaml, write_yaml
 from semantic_layer.sl.platforms import get_platform, split_table
 
 
@@ -117,7 +117,7 @@ def write(layer: Layer, catalog: Catalog) -> list[Path]:
     written: list[Path] = []
     for platform in PLATFORMS:
         folder = layer.catalog / platform
-        folder.mkdir(parents=True, exist_ok=True)
+        ensure_dir(folder)
         for stale in folder.glob("*.yaml"):
             stale.unlink()
         for entry in sorted(catalog.tables.get(platform, {}).values(), key=lambda e: e["table"]):

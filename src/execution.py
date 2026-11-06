@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import ROOT_DIR
+from src.fs_write import ensure_dir, write_text_file
 from src.pipeline_config import PipelineConfig
 from src.pipelines.oracle_to_bigquery import LATEST_RUN_REPORT_NAME, run
 from src.sql_models import RunReport
@@ -32,9 +33,7 @@ def resolve_user_path(path: str | Path) -> Path:
 
 def ensure_execution_input_dir(config: PipelineConfig) -> Path:
     """Create and return the configured execution input directory."""
-    directory = resolve_user_path(config.execution.default_input_dir)
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory
+    return ensure_dir(resolve_user_path(config.execution.default_input_dir))
 
 
 def result_dir_for_script(script_path: Path, suffix: str) -> Path:
@@ -67,7 +66,7 @@ def run_sql_file(
 
     suffix = result_suffix if result_suffix is not None else pipeline_config.execution.result_suffix
     result_dir = result_dir_for_script(resolved_script, suffix)
-    result_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(result_dir)
     source_sql = resolved_script.read_text(encoding="utf-8")
     report = run(script=source_sql, pipeline_config=pipeline_config, run_dir=result_dir)
     return _finalize_execution_report(report, resolved_script, result_dir)
@@ -123,16 +122,16 @@ def load_report_json(report_path: str | Path) -> dict[str, Any]:
 
 def _finalize_execution_report(report: RunReport, script_path: Path, result_dir: Path) -> ScriptExecution:
     source_copy = result_dir / "source_oracle.sql"
-    source_copy.write_text(script_path.read_text(encoding="utf-8"), encoding="utf-8")
+    write_text_file(source_copy, script_path.read_text(encoding="utf-8"))
 
     log_path = result_dir / f"{report.script_id}_log.txt"
-    log_path.write_text("\n".join(report.log) + "\n", encoding="utf-8")
+    write_text_file(log_path, "\n".join(report.log) + "\n")
 
     report.artifacts["source_sql"] = str(source_copy)
     report.artifacts["run_log_txt"] = str(log_path)
     report.artifacts["input_sql"] = str(script_path)
     report_path = Path(report.artifacts["run_report_json"])
-    report_path.write_text(json.dumps(_report_to_jsonable(report), indent=2), encoding="utf-8")
+    write_text_file(report_path, json.dumps(_report_to_jsonable(report), indent=2))
     return ScriptExecution(
         script_path=script_path,
         result_dir=result_dir,

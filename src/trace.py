@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from src.fs_write import write_text_file
 from src.pipeline_config import PipelineConfig, TraceConfig, config_to_dict
 
 
@@ -72,4 +73,4 @@ class TraceRecorder:
             "artifacts": artifacts or {},
             "events": self.to_list(),
         }
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        write_text_file(path, json.dumps(payload, indent=2, sort_keys=True))

@@ -22,7 +22,7 @@ from pathlib import Path
 
 import duckdb
 
-from semantic_layer.sl.common import Layer, logger
+from semantic_layer.sl.common import Layer, ensure_dir, logger
 
 SEED = 20261003
 DATA_START = dt.date(2023, 1, 1)
@@ -175,7 +175,7 @@ def seed(layer: Layer) -> dict[str, str]:
     data = generate()
     paths = {platform: layer.mock_path(platform) for platform in ("legacy", "cloud")}
     for path in paths.values():
-        path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(path.parent)
         if path.exists():
             path.unlink()
 
@@ -206,6 +206,7 @@ def seed(layer: Layer) -> dict[str, str]:
 def _bulk_insert(con: duckdb.DuckDBPyConnection, table: str, rows: list[tuple], scratch: str) -> None:
     """Load rows through a CSV + COPY — DuckDB's executemany is far too slow for ~20k rows."""
     path = Path(scratch) / f"{table}.csv"
+    # runtime-write-exempt: ``scratch`` is a tempfile.TemporaryDirectory made by seed(), outside the tree
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         for row in rows:

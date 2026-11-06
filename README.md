@@ -302,6 +302,7 @@ config/
 src/
   execution.py                   File-backed single/batch execution helpers
   connections.py                 Mock-safe connection test helpers
+  fs_write.py                    The one writer of caller-chosen files and folders
   gcs_io.py                      Shared real GCS upload/download helpers (ADC)
   bigquery_io.py                 Shared real BigQuery query/schema/load helpers (ADC)
   llm_client.py                  Local hub client

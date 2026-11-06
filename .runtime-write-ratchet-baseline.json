@@ -1,22 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "semantic_layer/sl/build.py", "counts": {"unresolved": 2}},
-    {"key": "semantic_layer/sl/catalog.py", "counts": {"unresolved": 1}},
-    {"key": "semantic_layer/sl/checks.py", "counts": {"unresolved": 2}},
-    {"key": "semantic_layer/sl/common.py", "counts": {"unresolved": 4}},
-    {"key": "semantic_layer/sl/harvest.py", "counts": {"unresolved": 2}},
-    {"key": "semantic_layer/sl/init.py", "counts": {"unresolved": 2}},
-    {"key": "semantic_layer/sl/mock_warehouse.py", "counts": {"unresolved": 2}},
-    {"key": "semantic_layer/sl/phase2/bulk.py", "counts": {"unresolved": 1}},
-    {"key": "semantic_layer/sl/phase2/navigator.py", "counts": {"unresolved": 2}},
-    {"key": "src/execution.py", "counts": {"unresolved": 5}},
-    {"key": "src/gcs_io.py", "counts": {"unresolved": 3}},
-    {"key": "src/logger.py", "counts": {"unresolved": 2}},
-    {"key": "src/mock_environment.py", "counts": {"unresolved": 4}},
-    {"key": "src/pipeline_config.py", "counts": {"unresolved": 2}},
-    {"key": "src/pipelines/oracle_to_bigquery.py", "counts": {"unresolved": 4}},
-    {"key": "src/table_registry.py", "counts": {"unresolved": 1}},
-    {"key": "src/trace.py", "counts": {"unresolved": 1}}
-  ]
+  "entries": []
 }

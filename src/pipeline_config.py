@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS, ROOT_DIR
+from src.fs_write import ensure_dir, write_text_file
 
 DEFAULT_PIPELINE_CONFIG_PATH = ROOT_DIR / "config" / "pipeline.json"
 
@@ -156,8 +157,8 @@ def write_pipeline_config(path: Path | str, raw: dict[str, Any]) -> PipelineConf
     if not config_path.is_absolute():
         config_path = ROOT_DIR / config_path
     validated = _config_from_raw(raw, config_path)
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(json.dumps(config_to_dict(validated), indent=2) + "\n", encoding="utf-8")
+    ensure_dir(config_path.parent)
+    write_text_file(config_path, json.dumps(config_to_dict(validated), indent=2) + "\n")
     return validated
 
 
