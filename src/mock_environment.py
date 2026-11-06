@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from contextlib import closing
 from pathlib import Path
 
 from src.config import EXAMPLES_DIR, INPUT_DIR, OUTPUT_DIR
+from src.sqlite_db import connect_sqlite
 
 DEMO_SCRIPT_PATH = EXAMPLES_DIR / "demo_oracle_script.sql"
 DEMO_MAPPING_PATH = EXAMPLES_DIR / "mapping_registry.json"
@@ -53,13 +53,6 @@ def bootstrap_mock_environment(run_dir: Path | None = None) -> dict[str, Path]:
         "mapping": mapping_path,
         "run_dir": run_dir,
     }
-
-
-def connect_sqlite(path: Path) -> sqlite3.Connection:
-    """Open a SQLite connection with row dictionaries enabled."""
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def _seed_oracle(path: Path) -> None:

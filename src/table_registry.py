@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import ROOT_DIR
+from src.sqlite_db import transaction
 
 DEFAULT_REGISTRY_PATH = ROOT_DIR / "data" / "table_registry.db"
 CSV_COLUMNS = [
@@ -87,7 +88,7 @@ def init_registry(path: str | Path | None = None) -> Path:
     """Create registry tables if missing."""
     db_path = registry_path(path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(db_path) as conn:
+    with transaction(db_path) as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS table_mappings (
@@ -135,8 +136,7 @@ def init_registry(path: str | Path | None = None) -> Path:
 def list_mappings(path: str | Path | None = None) -> list[TableMapping]:
     """Return all mappings sorted by source."""
     db_path = init_registry(path)
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
+    with transaction(db_path) as conn:
         rows = conn.execute(
             """
             SELECT oracle_schema, oracle_table, bigquery_project, bigquery_dataset, bigquery_table,
@@ -153,7 +153,7 @@ def upsert_mapping(mapping: TableMapping, path: str | Path | None = None) -> Non
     """Insert or update one mapping."""
     db_path = init_registry(path)
     now = _now()
-    with sqlite3.connect(db_path) as conn:
+    with transaction(db_path) as conn:
         conn.execute(
             """
             INSERT INTO table_mappings (
@@ -190,8 +190,7 @@ def ensure_pending(oracle_schema: str, oracle_table: str, path: str | Path | Non
 def get_mapping(oracle_schema: str, oracle_table: str, path: str | Path | None = None) -> TableMapping | None:
     """Return one mapping by source table."""
     db_path = init_registry(path)
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
+    with transaction(db_path) as conn:
         row = conn.execute(
             """
             SELECT oracle_schema, oracle_table, bigquery_project, bigquery_dataset, bigquery_table,
@@ -263,7 +262,7 @@ def replace_column_mappings(
 ) -> None:
     """Replace stored column compatibility rows for one table pair."""
     db_path = init_registry(path)
-    with sqlite3.connect(db_path) as conn:
+    with transaction(db_path) as conn:
         conn.execute(
             "DELETE FROM column_mappings WHERE oracle_schema = ? AND oracle_table = ?",
             (table_mapping.oracle_schema.lower(), table_mapping.oracle_table.lower()),
@@ -298,8 +297,7 @@ def list_column_mappings(
         clauses.append("oracle_table = ?")
         params.append(oracle_table.lower())
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
+    with transaction(db_path) as conn:
         rows = conn.execute(
             f"""
             SELECT oracle_schema, oracle_table, oracle_column, oracle_type,

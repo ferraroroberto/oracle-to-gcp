@@ -55,6 +55,12 @@ flowchart TB
   PREFLIGHT --> TABLEREG
   TABLEREG --> REGDB[("data/table_registry.db")]
 
+  SQLITEDB["sqlite_db.py
+the one SQLite opener: connect_sqlite, transaction (commit, close)"]
+  TABLEREG --> SQLITEDB
+  MOCKENV --> SQLITEDB
+  RUN --> SQLITEDB
+
   LLMCLIENT["llm_client.py\nLocalHubClient — openai_chat or anthropic_messages, by request_format"]
   SECRETS["secrets.py\nenv secret lookup + redaction"]
   TRANSLATE --> LLMCLIENT

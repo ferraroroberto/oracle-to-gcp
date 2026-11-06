@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 
-from src.mock_environment import bootstrap_mock_environment, connect_sqlite
+from src.mock_environment import bootstrap_mock_environment
+from src.sqlite_db import connect_sqlite
 from src.pipeline_config import config_to_dict, load_pipeline_config, write_pipeline_config
 from src.pipelines.oracle_to_bigquery import run
 from src.secrets import redact
