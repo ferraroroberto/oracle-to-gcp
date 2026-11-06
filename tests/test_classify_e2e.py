@@ -42,6 +42,7 @@ def test_real_rules_route_representative_paths() -> None:
     # The standalone audits + the rest of the non-e2e test tree: nothing the
     # app imports from them -> skip.
     assert tier("tests/audits/schema_compatibility_audit.py") == "skip"
+    assert tier("config/audits/schema_audit_config.json") == "skip"
     assert tier("tests/test_bigquery_io.py") == "skip"
 
     # The self-contained semantic_layer/ spike (never imported by app/) and
@@ -51,10 +52,10 @@ def test_real_rules_route_representative_paths() -> None:
     assert tier("README.md") == "skip"
 
     # Unmatched paths the app does read from (src/, config/pipeline.json,
-    # config/examples/ demo data) fail safe to full rather than being guessed "none".
+    # data/examples/ demo data) fail safe to full rather than being guessed "none".
     assert tier("src/bigquery_io.py") == "full"
     assert tier("config/pipeline.json") == "full"
-    assert tier("config/examples/demo_oracle_script.sql") == "full"
+    assert tier("data/examples/demo_oracle_script.sql") == "full"
 
     # Mixed real diff (app + an inert doc) -> full.
     assert tier("app/app.py", "docs/architecture.mmd") == "full"

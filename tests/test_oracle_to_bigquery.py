@@ -232,5 +232,5 @@ def test_run_writes_a_stable_latest_report_the_audit_templates_read(tmp_path) ->
     latest = tmp_path / LATEST_RUN_REPORT_NAME
     assert latest.read_text(encoding="utf-8") == Path(report.artifacts["run_report_json"]).read_text(encoding="utf-8")
     for template in ("query_cost_audit_config.json", "query_optimization_loop_config.json"):
-        audit_config = json.loads((ROOT_DIR / "tests" / "audits" / template).read_text(encoding="utf-8"))
+        audit_config = json.loads((ROOT_DIR / "config" / "audits" / template).read_text(encoding="utf-8"))
         assert Path(audit_config["input"]["path"]).name == LATEST_RUN_REPORT_NAME

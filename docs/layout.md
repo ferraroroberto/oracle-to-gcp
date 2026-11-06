@@ -6,10 +6,10 @@ Where code goes. The root layout is checked against the `streamlit` shape declar
 
 - `app/` — Streamlit UI only. `app.py` handles page config, shared state, the sidebar and routing; `views/` holds one file per page (`welcome.py`, `translator_demo.py`, `process_map.py`); `styles/` holds the stylesheet. `log_panel.py` is the shared log widget.
 - `src/` — logic layer, never imports `streamlit` or `app`. Flat modules for config, connections, the one SQLite opener (`sqlite_db.py`), the one writer of caller-chosen files and folders (`fs_write.py`), execution, mock environment, SQL processing, translation, validation, preflight, lineage and the GCS/BigQuery IO helpers; `pipelines/` holds the end-to-end orchestrator (`oracle_to_bigquery.py`).
-- `tests/` — unit tests for `src/`; `e2e/` boots Streamlit headlessly for the smoke test; `audits/` holds the standalone audit tools (schema compatibility, query cost, query optimization loop) with their config templates. They are runnable modules (`python -m tests.audits.<name>`), not test suites; the unit tests that cover them sit beside the other tests.
+- `tests/` — unit tests for `src/`; `e2e/` boots Streamlit headlessly for the smoke test; `audits/` holds the standalone audit tools (schema compatibility, query cost, query optimization loop); their config templates are `config/audits/*.json`. They are runnable modules (`python -m tests.audits.<name>`), not test suites; the unit tests that cover them sit beside the other tests.
 - `scripts/` — the pre-ship gate (`verify-before-ship.ps1`) and the vendored ratchets with their wrappers.
-- `data/` — runtime input, output and log folders; contents are not tracked.
-- `config/` — `pipeline.json`, the pipeline defaults read at import time, and `examples/`, the fictitious demo Oracle script and source-to-target mapping registry the UI and CLI load as sample input. Configuration and sample data, not code, so neither has a home in `src/`; `config/` is in the `streamlit` preset.
+- `data/` — runtime input, output and log folders, whose contents are not tracked, and `examples/`, the fictitious demo Oracle script and source-to-target mapping registry the UI and CLI load as sample input (`EXAMPLES_DIR` in `src/config.py`; the pipeline copies them into `data/input/`).
+- `config/` — `pipeline.json`, the pipeline defaults read at import time, and `audits/`, the config templates of the standalone audit tools. Configuration, not code; `config/` is in the `streamlit` preset.
 - `docs/` — durable reference: architecture rationale and diagram, design records, this file.
 
 ## Declared exceptions (`extra_roots`)

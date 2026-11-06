@@ -25,7 +25,7 @@ from tests.audits._common import load_json as _load_json
 
 log = logging.getLogger("schema_compatibility_audit")
 
-DEFAULT_CONFIG_PATH = Path(__file__).with_name("schema_audit_config.json")
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "audits" / "schema_audit_config.json"
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
