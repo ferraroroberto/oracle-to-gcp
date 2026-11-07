@@ -1,5 +1,21 @@
 {
   "version": 1,
   "tools": {"jscpd": "5.4.0", "ruff": "0.15.20"},
-  "entries": []
+  "entries": [
+    {"key": "order:I001:app/app.py:import streamlit as st", "files": ["app/app.py"]},
+    {"key": "order:I001:app/views/process_map.py:from base64 import b64encode", "files": ["app/views/process_map.py"]},
+    {"key": "order:I001:app/views/translator_demo.py:from __future__ import annotations", "files": ["app/views/translator_demo.py"]},
+    {"key": "order:I001:semantic_layer/sl/ask.py:from __future__ import annotations", "files": ["semantic_layer/sl/ask.py"]},
+    {"key": "order:I001:semantic_layer/sl/build.py:from __future__ import annotations", "files": ["semantic_layer/sl/build.py"]},
+    {"key": "order:I001:semantic_layer/sl/checks.py:from __future__ import annotations", "files": ["semantic_layer/sl/checks.py"]},
+    {"key": "order:I001:semantic_layer/sl/harvest.py:from __future__ import annotations", "files": ["semantic_layer/sl/harvest.py"]},
+    {"key": "order:I001:semantic_layer/sl/phase2/bulk.py:from __future__ import annotations", "files": ["semantic_layer/sl/phase2/bulk.py"]},
+    {"key": "order:I001:semantic_layer/sl/validate.py:from __future__ import annotations", "files": ["semantic_layer/sl/validate.py"]},
+    {"key": "order:I001:src/connections.py:from __future__ import annotations", "files": ["src/connections.py"]},
+    {"key": "order:I001:src/pipelines/oracle_to_bigquery.py:from __future__ import annotations", "files": ["src/pipelines/oracle_to_bigquery.py"]},
+    {"key": "order:I001:tests/_streamlit_lifecycle.py:from __future__ import annotations", "files": ["tests/_streamlit_lifecycle.py"]},
+    {"key": "order:I001:tests/test_bigquery_single_client_path.py:from __future__ import annotations", "files": ["tests/test_bigquery_single_client_path.py"]},
+    {"key": "order:I001:tests/test_oracle_to_bigquery.py:from __future__ import annotations", "files": ["tests/test_oracle_to_bigquery.py"]},
+    {"key": "order:I001:tests/test_preflight_registry.py:from __future__ import annotations", "files": ["tests/test_preflight_registry.py"]}
+  ]
 }
