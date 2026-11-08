@@ -11,7 +11,11 @@ import pytest
 from src import bigquery_io
 from tests.audits.query_cost_audit import BigQueryDryRunEstimator
 from tests.audits.query_optimization_loop import BigQueryQueryExecutor
-from tests.audits.schema_compatibility_audit import BigQueryMetadataAdapter, ColumnMetadata, TablePair
+from tests.audits.schema_compatibility_audit import (
+    BigQueryMetadataAdapter,
+    ColumnMetadata,
+    TablePair,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BIGQUERY_IO = REPO_ROOT / "src" / "bigquery_io.py"

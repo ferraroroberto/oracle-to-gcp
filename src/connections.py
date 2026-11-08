@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from src.pipeline_config import BigQueryConfig, GoogleCloudConfig, LLMConfig, OracleConfig, PipelineConfig
+from src.pipeline_config import (
+    BigQueryConfig,
+    GoogleCloudConfig,
+    LLMConfig,
+    OracleConfig,
+    PipelineConfig,
+)
 from src.secrets import get_env_secret, redact
 
 

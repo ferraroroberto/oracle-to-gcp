@@ -25,7 +25,15 @@ from sqlglot import exp
 
 from semantic_layer.sl import catalog as catalog_mod
 from semantic_layer.sl.common import KINDS, PLATFORMS, Layer
-from semantic_layer.sl.model import Definition, Model, jsonable, load_model, ref_version, references, strip_ref
+from semantic_layer.sl.model import (
+    Definition,
+    Model,
+    jsonable,
+    load_model,
+    ref_version,
+    references,
+    strip_ref,
+)
 from semantic_layer.sl.sqlutil import as_join, fragment_columns
 
 

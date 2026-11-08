@@ -119,6 +119,63 @@ def map_pandas_dtype(series: pd.Series) -> str:
     return "STRING"
 
 
+def _reconcile_column(
+    col: str,
+    bq_type: str,
+    excel_type: str,
+    df_converted: pd.DataFrame,
+    info_messages: list[str],
+    warning_messages: list[str],
+    conversion_messages: list[str],
+) -> bool:
+    """Coerce one column in ``df_converted`` toward its BigQuery type; False on an unresolvable mismatch."""
+    ok = True
+    if bq_type == "STRING":
+        df_converted[col] = df_converted[col].astype(str)
+        conversion_messages.append(f"Converting {col}: source {excel_type} -> BigQuery STRING")
+    elif bq_type in {"BOOL", "BOOLEAN"}:
+        if excel_type == "BOOL":
+            info_messages.append(f"{col}: source BOOL vs BigQuery {bq_type}")
+        elif excel_type == "FLOAT64":
+            unique_vals = df_converted[col].dropna().unique()
+            if len(unique_vals) <= 2 and all(val in {0, 1} for val in unique_vals):
+                df_converted[col] = df_converted[col].fillna(False).astype(bool)
+                conversion_messages.append(
+                    f"Converting {col}: source FLOAT64 (with nulls) -> BigQuery BOOLEAN (nulls set to False)"
+                )
+            else:
+                warning_messages.append(f"{col} type mismatch (source FLOAT -> BigQuery {bq_type})")
+                ok = False
+        else:
+            warning_messages.append(f"{col} type mismatch (source {excel_type} -> BigQuery {bq_type})")
+            ok = False
+    elif excel_type == "BOOL" and bq_type not in {"BOOL", "BOOLEAN"}:
+        warning_messages.append(f"{col} type mismatch (source BOOL -> BigQuery {bq_type})")
+        ok = False
+    elif excel_type == "FLOAT64" and bq_type == "INTEGER":
+        df_converted[col] = df_converted[col].astype("Int64")
+        conversion_messages.append(f"Converting {col}: source FLOAT64 -> BigQuery INTEGER")
+    elif excel_type == "FLOAT64" and bq_type == "FLOAT":
+        df_converted[col] = df_converted[col].astype("float64")
+        conversion_messages.append(f"Converting {col}: source FLOAT64 -> BigQuery FLOAT")
+    elif excel_type == "STRING" and bq_type in BIGQUERY_NUMERIC_TYPES:
+        if bq_type in {"INTEGER", "INT64"}:
+            df_converted[col] = pd.to_numeric(df_converted[col], errors="coerce").astype("Int64")
+        else:
+            df_converted[col] = pd.to_numeric(df_converted[col], errors="coerce")
+        conversion_messages.append(
+            f"Converting {col}: source STRING -> BigQuery {bq_type} (non-numeric values set to NULL)"
+        )
+    elif excel_type == "FLOAT64" and bq_type in BIGQUERY_NUMERIC_TYPES:
+        info_messages.append(f"{col}: source FLOAT64 vs BigQuery {bq_type}")
+    elif excel_type == "FLOAT64" and bq_type not in BIGQUERY_NUMERIC_TYPES.union({"STRING"}):
+        warning_messages.append(f"{col} numeric mismatch (source FLOAT -> BigQuery {bq_type})")
+        ok = False
+    else:
+        info_messages.append(f"{col}: source {excel_type} vs BigQuery {bq_type}")
+    return ok
+
+
 def compare_dataframe_schema(
     df: pd.DataFrame,
     bq_schema: Sequence[Any],
@@ -161,49 +218,10 @@ def compare_dataframe_schema(
                 info_messages.append(f"{col}: source DATETIME compatible with BigQuery {bq_type}")
             continue
 
-        if bq_type == "STRING":
-            df_converted[col] = df_converted[col].astype(str)
-            conversion_messages.append(f"Converting {col}: source {excel_type} -> BigQuery STRING")
-        elif bq_type in {"BOOL", "BOOLEAN"}:
-            if excel_type == "BOOL":
-                info_messages.append(f"{col}: source BOOL vs BigQuery {bq_type}")
-            elif excel_type == "FLOAT64":
-                unique_vals = df_converted[col].dropna().unique()
-                if len(unique_vals) <= 2 and all(val in {0, 1} for val in unique_vals):
-                    df_converted[col] = df_converted[col].fillna(False).astype(bool)
-                    conversion_messages.append(
-                        f"Converting {col}: source FLOAT64 (with nulls) -> BigQuery BOOLEAN (nulls set to False)"
-                    )
-                else:
-                    warning_messages.append(f"{col} type mismatch (source FLOAT -> BigQuery {bq_type})")
-                    all_ok = False
-            else:
-                warning_messages.append(f"{col} type mismatch (source {excel_type} -> BigQuery {bq_type})")
-                all_ok = False
-        elif excel_type == "BOOL" and bq_type not in {"BOOL", "BOOLEAN"}:
-            warning_messages.append(f"{col} type mismatch (source BOOL -> BigQuery {bq_type})")
+        if not _reconcile_column(
+            col, bq_type, excel_type, df_converted, info_messages, warning_messages, conversion_messages
+        ):
             all_ok = False
-        elif excel_type == "FLOAT64" and bq_type == "INTEGER":
-            df_converted[col] = df_converted[col].astype("Int64")
-            conversion_messages.append(f"Converting {col}: source FLOAT64 -> BigQuery INTEGER")
-        elif excel_type == "FLOAT64" and bq_type == "FLOAT":
-            df_converted[col] = df_converted[col].astype("float64")
-            conversion_messages.append(f"Converting {col}: source FLOAT64 -> BigQuery FLOAT")
-        elif excel_type == "STRING" and bq_type in BIGQUERY_NUMERIC_TYPES:
-            if bq_type in {"INTEGER", "INT64"}:
-                df_converted[col] = pd.to_numeric(df_converted[col], errors="coerce").astype("Int64")
-            else:
-                df_converted[col] = pd.to_numeric(df_converted[col], errors="coerce")
-            conversion_messages.append(
-                f"Converting {col}: source STRING -> BigQuery {bq_type} (non-numeric values set to NULL)"
-            )
-        elif excel_type == "FLOAT64" and bq_type in BIGQUERY_NUMERIC_TYPES:
-            info_messages.append(f"{col}: source FLOAT64 vs BigQuery {bq_type}")
-        elif excel_type == "FLOAT64" and bq_type not in BIGQUERY_NUMERIC_TYPES.union({"STRING"}):
-            warning_messages.append(f"{col} numeric mismatch (source FLOAT -> BigQuery {bq_type})")
-            all_ok = False
-        else:
-            info_messages.append(f"{col}: source {excel_type} vs BigQuery {bq_type}")
 
     df_converted = df_converted[columns_to_keep]
 

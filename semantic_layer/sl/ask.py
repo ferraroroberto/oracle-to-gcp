@@ -25,9 +25,22 @@ import sqlglot
 from sqlglot import exp
 
 from semantic_layer.sl.common import Layer, LayerError, month_end, read_json
-from semantic_layer.sl.model import Definition, Model, load_model, strip_ref, template_sql
+from semantic_layer.sl.model import (
+    Definition,
+    Model,
+    load_model,
+    strip_ref,
+    template_sql,
+)
 from semantic_layer.sl.platforms import get_platform
-from semantic_layer.sl.sqlutil import as_join, canonical, is_time_equality, predicate_set, split_conjuncts, substitute
+from semantic_layer.sl.sqlutil import (
+    as_join,
+    canonical,
+    is_time_equality,
+    predicate_set,
+    split_conjuncts,
+    substitute,
+)
 from semantic_layer.sl.validate import normalise_term, stale_pins
 
 RESOLVABLE = ("entity", "dimension", "metric", "filter")

@@ -20,7 +20,13 @@ from typing import Any
 import sqlglot
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import PLATFORMS, Layer, resolve_today, write_json, write_text
+from semantic_layer.sl.common import (
+    PLATFORMS,
+    Layer,
+    resolve_today,
+    write_json,
+    write_text,
+)
 from semantic_layer.sl.model import Model, load_model
 from semantic_layer.sl.platforms import PlatformUnavailable, get_platform
 from semantic_layer.sl.validate import binding_columns, stale_pins

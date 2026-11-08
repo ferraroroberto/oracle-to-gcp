@@ -20,7 +20,14 @@ from pathlib import Path
 from typing import Any
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import PLATFORMS, Layer, LayerError, read_json, write_json, write_text
+from semantic_layer.sl.common import (
+    PLATFORMS,
+    Layer,
+    LayerError,
+    read_json,
+    write_json,
+    write_text,
+)
 from semantic_layer.sl.harvest import is_period_filter, parse_sql
 from semantic_layer.sl.model import load_model
 from semantic_layer.sl.platforms import get_platform

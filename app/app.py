@@ -33,10 +33,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
+from views import process_map, translator_demo, welcome
 
 from src.config import APP_NAME
 from src.logger import get_logger
-from views import process_map, translator_demo, welcome
 
 # ---------------------------------------------------------------------------
 # Page config (must be first Streamlit call)

@@ -23,8 +23,6 @@ from src.execution import (
     run_sql_file,
 )
 from src.mock_environment import load_demo_script, load_mapping_registry
-from src.secrets import redact
-from src.table_registry import export_csv, import_csv, list_column_mappings, list_mappings, template_csv, upsert_mapping, TableMapping
 from src.pipeline_config import (
     DEFAULT_PIPELINE_CONFIG_PATH,
     config_to_dict,
@@ -33,7 +31,17 @@ from src.pipeline_config import (
     write_pipeline_config,
 )
 from src.pipelines import oracle_to_bigquery
+from src.secrets import redact
 from src.sql_models import RunReport
+from src.table_registry import (
+    TableMapping,
+    export_csv,
+    import_csv,
+    list_column_mappings,
+    list_mappings,
+    template_csv,
+    upsert_mapping,
+)
 
 log = get_logger("ui.execution")
 

@@ -19,9 +19,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, UTC
-from pathlib import Path
 from collections.abc import Callable
+from datetime import UTC, datetime
+from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 _APP = _ROOT / "app" / "app.py"

@@ -19,7 +19,6 @@ from src.mock_environment import (
     load_demo_script,
     load_mapping_registry,
 )
-from src.sqlite_db import connect_sqlite
 from src.pipeline_config import (
     PipelineConfig,
     load_pipeline_config,
@@ -29,6 +28,7 @@ from src.pipeline_config import (
 from src.preflight import run_table_preflight
 from src.sql_models import RunReport, SqlUnit
 from src.sql_processing import build_units, materialize_variables
+from src.sqlite_db import connect_sqlite
 from src.trace import TraceRecorder
 from src.translator import TranslationEngine
 from src.validation import (

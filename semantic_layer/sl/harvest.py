@@ -23,10 +23,25 @@ import sqlglot
 from sqlglot import exp
 
 from semantic_layer.sl import catalog as catalog_mod
-from semantic_layer.sl.common import KIND_DIRS, Layer, LayerError, read_json, read_yaml, write_json, write_text, write_yaml
+from semantic_layer.sl.common import (
+    KIND_DIRS,
+    Layer,
+    LayerError,
+    read_json,
+    read_yaml,
+    write_json,
+    write_text,
+    write_yaml,
+)
 from semantic_layer.sl.model import Model, load_model
 from semantic_layer.sl.platforms import MockDuckDBPlatform, get_platform
-from semantic_layer.sl.sqlutil import canonical, is_time_equality, literals, predicate_set, split_conjuncts
+from semantic_layer.sl.sqlutil import (
+    canonical,
+    is_time_equality,
+    literals,
+    predicate_set,
+    split_conjuncts,
+)
 
 MAX_DISTRIBUTION_VALUES = 50  # wider than this is not a code column — never probe its values
 
@@ -115,6 +130,50 @@ def _line_of(sql: str, pattern: str) -> int:
     return 1
 
 
+def _scope_joins(
+    scope: _Scope, scopes: dict[str, _Scope], dialect: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """(joins, unused_joins) of one scope's SELECT."""
+    joins: list[dict[str, Any]] = []
+    unused_joins: list[dict[str, Any]] = []
+    for join in scope.select.args.get("joins") or []:
+        right = join.this
+        if not isinstance(right, exp.Table):
+            continue
+        on = join.args.get("on")
+        keys = []
+        for term in split_conjuncts(on):
+            if isinstance(term, exp.EQ) and isinstance(term.left, exp.Column) and isinstance(term.right, exp.Column):
+                a, b = term.left, term.right
+                if a.table == right.alias_or_name:
+                    a, b = b, a
+                keys.append({"left_alias": a.table, "left": a.name, "right_alias": b.table, "right": b.name,
+                             "left_source": _resolve_column(a, scope, scopes),
+                             "right_source": _resolve_column(b, scope, scopes)})
+        left_alias = keys[0]["left_alias"] if keys else None
+        joins.append({
+            "scope": scope.name,
+            "type": _join_type(join),
+            "right_alias": right.alias_or_name,
+            "right_table": scope.aliases.get(right.alias_or_name),
+            "left_alias": left_alias,
+            "left_table": scope.aliases.get(left_alias) if left_alias else None,
+            "condition": on.sql(dialect=dialect) if on is not None else None,
+            "keys": keys,
+        })
+        # A joined table whose alias is used nowhere but its own ON clause.
+        used_elsewhere = any(
+            c.table == right.alias_or_name
+            for c in scope.select.find_all(exp.Column)
+            if not (on is not None and c.find_ancestor(exp.Join) is join)
+        )
+        if not used_elsewhere:
+            unused_joins.append({"alias": right.alias_or_name,
+                                 "table": scope.aliases.get(right.alias_or_name),
+                                 "type": _join_type(join)})
+    return joins, unused_joins
+
+
 def parse_sql(sql: str, dialect: str) -> dict[str, Any]:
     """Structural facts about one query. Pure function: no catalog, no database."""
     try:
@@ -162,41 +221,9 @@ def parse_sql(sql: str, dialect: str) -> dict[str, Any]:
                 "columns": sorted({c.name for c in term.find_all(exp.Column)}),
                 "literals": literals(term),
             })
-        for join in scope.select.args.get("joins") or []:
-            right = join.this
-            if not isinstance(right, exp.Table):
-                continue
-            on = join.args.get("on")
-            keys = []
-            for term in split_conjuncts(on):
-                if isinstance(term, exp.EQ) and isinstance(term.left, exp.Column) and isinstance(term.right, exp.Column):
-                    a, b = term.left, term.right
-                    if a.table == right.alias_or_name:
-                        a, b = b, a
-                    keys.append({"left_alias": a.table, "left": a.name, "right_alias": b.table, "right": b.name,
-                                 "left_source": _resolve_column(a, scope, scopes),
-                                 "right_source": _resolve_column(b, scope, scopes)})
-            left_alias = keys[0]["left_alias"] if keys else None
-            facts["joins"].append({
-                "scope": scope.name,
-                "type": _join_type(join),
-                "right_alias": right.alias_or_name,
-                "right_table": scope.aliases.get(right.alias_or_name),
-                "left_alias": left_alias,
-                "left_table": scope.aliases.get(left_alias) if left_alias else None,
-                "condition": on.sql(dialect=dialect) if on is not None else None,
-                "keys": keys,
-            })
-            # A joined table whose alias is used nowhere but its own ON clause.
-            used_elsewhere = any(
-                c.table == right.alias_or_name
-                for c in scope.select.find_all(exp.Column)
-                if not (on is not None and c.find_ancestor(exp.Join) is join)
-            )
-            if not used_elsewhere:
-                facts["unused_joins"].append({"alias": right.alias_or_name,
-                                              "table": scope.aliases.get(right.alias_or_name),
-                                              "type": _join_type(join)})
+        scope_joins, scope_unused = _scope_joins(scope, scopes, dialect)
+        facts["joins"].extend(scope_joins)
+        facts["unused_joins"].extend(scope_unused)
         if scope.name == "main":
             for projection in scope.select.expressions:
                 sources = sorted({src for c in projection.find_all(exp.Column)
