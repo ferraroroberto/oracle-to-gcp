@@ -7,16 +7,22 @@ from pathlib import Path
 
 import pytest
 
-from src.mock_environment import bootstrap_mock_environment, load_demo_script
-from src.sqlite_db import connect_sqlite
-from src.execution import find_previous_results, list_sql_scripts, load_report_json, run_sql_batch, run_sql_file
-from src.pipeline_config import load_pipeline_config, with_overrides
 from src.config import ROOT_DIR
+from src.execution import (
+    find_previous_results,
+    list_sql_scripts,
+    load_report_json,
+    run_sql_batch,
+    run_sql_file,
+)
+from src.mock_environment import bootstrap_mock_environment, load_demo_script
+from src.pipeline_config import load_pipeline_config, with_overrides
 from src.pipelines.oracle_to_bigquery import LATEST_RUN_REPORT_NAME, run
-from src.preflight import refresh_schema_compatibility
-from src.table_registry import TableMapping, list_column_mappings
 from src.pipelines.oracle_to_bigquery import main as pipeline_main
+from src.preflight import refresh_schema_compatibility
 from src.sql_processing import build_units, materialize_variables
+from src.sqlite_db import connect_sqlite
+from src.table_registry import TableMapping, list_column_mappings
 
 
 def test_materialize_variables_resolves_demo_run_date(tmp_path) -> None:

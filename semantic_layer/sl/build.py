@@ -21,7 +21,14 @@ from typing import Any
 
 from semantic_layer.sl import catalog as catalog_mod
 from semantic_layer.sl.common import PLATFORMS, Layer, write_text
-from semantic_layer.sl.model import Definition, Model, jsonable, load_model, references, strip_ref
+from semantic_layer.sl.model import (
+    Definition,
+    Model,
+    jsonable,
+    load_model,
+    references,
+    strip_ref,
+)
 
 CHECKED = ("index.jsonl", "model.json", "docs")
 

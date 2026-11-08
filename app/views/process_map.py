@@ -5,7 +5,6 @@ from pathlib import Path
 
 import streamlit as st
 
-
 _DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
 _PROCESS_MAP_HTML = _DOCS_DIR / "oracle-to-gcp-process-map.html"
 _PROCESS_MAP_SNAPSHOT = _DOCS_DIR / "oracle-to-gcp-process-map.png"
