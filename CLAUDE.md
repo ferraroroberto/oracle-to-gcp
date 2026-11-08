@@ -40,6 +40,11 @@ Individual stages, if iterating on one:
 
 Run `verify-before-ship.ps1` before declaring any UI-touching change done — it auto-boots Streamlit for the e2e smoke test, so it never skips the boot check the way a bare `pytest --ignore=tests/e2e` would.
 
+## CI expectations
+
+- Workflow `.github/workflows/semantic-layer.yml` runs on a PR that touches `semantic_layer/**`, `.github/skills/semantic-*/**` or the workflow itself, and on a push to `main` that touches `semantic_layer/**`: validate, `build --check`, golden-question evals, toolkit tests. **Advisory, not required** — the local gate runs the same semantic layer checks and is the contract.
+- E2e surface: none in CI (the Streamlit boot smoke test runs only in the local gate). A diff outside `semantic_layer/**` and the semantic skills triggers no workflow run, so there is no CI run to wait on.
+
 ## Restart and verify before hand-off
 
 No tray, PWA, or long-lived background service — `launch_app.bat` starts a local Streamlit dev server on demand (default `http://localhost:8501`). The file-watcher hot-reloads most edits; a full restart is only needed after changes to `st.set_page_config`, top-level imports, or `config/pipeline.json` defaults read at import time.
