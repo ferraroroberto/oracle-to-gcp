@@ -28,15 +28,17 @@ import logging
 import sys
 import threading
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-from src.config import LOG_DIR
 from src.fs_write import ensure_dir
 
 # ---------------------------------------------------------------------------
 # Paths & constants
 # ---------------------------------------------------------------------------
-ensure_dir(LOG_DIR)
-_LOG_FILE = LOG_DIR / "app.log"
+# Spelled from __file__ (not src.config.LOG_DIR) so the runtime-write ratchet can see it is data/logs;
+# tests/test_config.py pins it equal to config.LOG_DIR.
+_LOG_FILE = Path(__file__).resolve().parent.parent / "data" / "logs" / "app.log"
+ensure_dir(_LOG_FILE.parent)
 
 _FMT = "%(asctime)s  %(levelname)-7s  %(name)-22s  %(message)s"
 _DATEFMT = "%H:%M:%S"
@@ -127,7 +129,6 @@ def _configure_root() -> None:
     stream.setFormatter(_ColorFormatter(_FMT, _DATEFMT))
     root.addHandler(stream)
 
-    # runtime-write-exempt: _LOG_FILE is LOG_DIR/app.log, and LOG_DIR is data/logs (src/config.py)
     file_h = RotatingFileHandler(
         _LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
     )

@@ -62,7 +62,7 @@ the one SQLite opener: connect_sqlite, transaction (commit, close)"]
   RUN --> SQLITEDB
 
   FSWRITE["fs_write.py
-the one writer of caller-chosen files and folders: ensure_dir, write_text_file, copy_file"]
+the one writer of caller-chosen files and folders: ensure_dir, write_text_file, require_runtime_path (refuses a code folder)"]
   EXEC --> FSWRITE
   MOCKENV --> FSWRITE
   RUN --> FSWRITE

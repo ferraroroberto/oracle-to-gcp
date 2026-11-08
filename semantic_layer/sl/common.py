@@ -139,7 +139,7 @@ def read_yaml(path: Path) -> Any:
 
 def ensure_dir(path: Path) -> Path:
     """Create ``path`` (and parents) if missing; the toolkit's one directory maker."""
-    # runtime-write-exempt: callers pass a path under the layer root, which the Layer object owns
+    # runtime-write-exempt: the toolkit authors the layer tree (domains/, catalog/, build/ ...) that is committed to git by design, so the target sits inside a code folder
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -147,7 +147,7 @@ def ensure_dir(path: Path) -> Path:
 def write_text(path: Path, text: str) -> Path:
     """Write UTF-8 ``text`` to ``path``, creating parent folders; the toolkit's one file writer."""
     ensure_dir(path.parent)
-    # runtime-write-exempt: callers pass a path under the layer root, which the Layer object owns
+    # runtime-write-exempt: the toolkit authors the layer tree (domains/, catalog/, build/ ...) that is committed to git by design, so the target sits inside a code folder
     path.write_text(text, encoding="utf-8")
     return path
 
