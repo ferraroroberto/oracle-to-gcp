@@ -179,39 +179,42 @@ def seed(layer: Layer) -> dict[str, str]:
         if path.exists():
             path.unlink()
 
-    with tempfile.TemporaryDirectory() as scratch, duckdb.connect(str(paths["cloud"])) as con:
+    with duckdb.connect(str(paths["cloud"])) as con:
         con.execute(CLOUD_DDL)
-        _bulk_insert(con, "analytics.stores", data.stores, scratch)
-        _bulk_insert(con, "analytics.customers", data.customers, scratch)
-        _bulk_insert(con, "analytics.orders", data.orders, scratch)
-        _bulk_insert(con, "analytics.customer_monthly", data.customer_monthly, scratch)
-        _bulk_insert(con, "analytics.loyalty_members", data.loyalty, scratch)
+        _bulk_insert(con, "analytics.stores", data.stores)
+        _bulk_insert(con, "analytics.customers", data.customers)
+        _bulk_insert(con, "analytics.orders", data.orders)
+        _bulk_insert(con, "analytics.customer_monthly", data.customer_monthly)
+        _bulk_insert(con, "analytics.loyalty_members", data.loyalty)
         # Few rows with multi-line text: a plain parameterised insert is simplest here.
         con.executemany("INSERT INTO ops.query_history VALUES (?, ?, ?, ?, ?)", data.history)
 
-    with tempfile.TemporaryDirectory() as scratch, duckdb.connect(str(paths["legacy"])) as con:
+    with duckdb.connect(str(paths["legacy"])) as con:
         con.execute(LEGACY_DDL)
-        _bulk_insert(con, "DWH.STORES", data.stores, scratch)
-        _bulk_insert(con, "DWH.CUSTOMERS", [row[:6] + (int(row[6]),) for row in data.customers], scratch)
-        _bulk_insert(con, "DWH.ORDERS", data.orders, scratch)
+        _bulk_insert(con, "DWH.STORES", data.stores)
+        _bulk_insert(con, "DWH.CUSTOMERS", [row[:6] + (int(row[6]),) for row in data.customers])
+        _bulk_insert(con, "DWH.ORDERS", data.orders)
         _bulk_insert(con, "DWH.CUSTOMER_MONTHLY",
-                     [row[:6] + (int(row[6]),) + row[7:] for row in data.customer_monthly], scratch)
-        _bulk_insert(con, "DWH.LOYALTY_MEMBERS", data.loyalty, scratch)
-        _bulk_insert(con, "DWH.STORE_TARGETS", data.targets, scratch)
+                     [row[:6] + (int(row[6]),) + row[7:] for row in data.customer_monthly])
+        _bulk_insert(con, "DWH.LOYALTY_MEMBERS", data.loyalty)
+        _bulk_insert(con, "DWH.STORE_TARGETS", data.targets)
 
     logger.info("✅ Mock warehouses seeded: %s customers, %s orders", len(data.customers), len(data.orders))
     return {platform: str(path) for platform, path in paths.items()}
 
 
-def _bulk_insert(con: duckdb.DuckDBPyConnection, table: str, rows: list[tuple], scratch: str) -> None:
+def _bulk_insert(con: duckdb.DuckDBPyConnection, table: str, rows: list[tuple]) -> None:
     """Load rows through a CSV + COPY — DuckDB's executemany is far too slow for ~20k rows."""
-    path = Path(scratch) / f"{table}.csv"
-    # runtime-write-exempt: ``scratch`` is a tempfile.TemporaryDirectory made by seed(), outside the tree
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    # delete=False: DuckDB reopens the file by name, which Windows forbids while it is held open here.
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", newline="", encoding="utf-8", delete=False) as handle:
         writer = csv.writer(handle)
         for row in rows:
             writer.writerow(["" if v is None else (str(v).lower() if isinstance(v, bool) else v) for v in row])
-    con.execute(f"COPY {table} FROM '{path.as_posix()}' (HEADER false, NULLSTR '')")
+    path = Path(handle.name)
+    try:
+        con.execute(f"COPY {table} FROM '{path.as_posix()}' (HEADER false, NULLSTR '')")
+    finally:
+        path.unlink(missing_ok=True)
 
 
 # --- synthetic query history (Phase 2 bulk harvest input) -------------------

@@ -14,11 +14,13 @@ from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from pathlib import Path
 
+from src.fs_write import require_runtime_path
+
 
 def connect_sqlite(path: str | Path) -> sqlite3.Connection:
     """Open a SQLite connection with row dictionaries enabled."""
-    # runtime-write-exempt: the helper opens whatever file the caller names, so the path is
-    # a parameter here; the callers pass their own run-directory paths.
+    require_runtime_path(path)
+    # runtime-write-exempt: the file is caller-supplied; require_runtime_path above refuses a code folder
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     return conn

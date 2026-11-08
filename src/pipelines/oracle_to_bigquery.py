@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from src import get_logger
-from src.fs_write import copy_file, write_text_file
+from src.fs_write import write_text_file
 from src.lineage import render_lineage_markdown
 from src.mock_environment import (
     bootstrap_mock_environment,
@@ -260,8 +260,9 @@ def _write_run_artifacts(
     record("Stage 8 artifacts written: %s", artifact_dir)
     recorder.add("artifacts", "written", artifacts)
     recorder.write(trace_path, status=status, pipeline_config=active_config, artifacts=artifacts)
-    write_text_file(report_path, json.dumps(_report_to_jsonable(report), indent=2))
-    copy_file(report_path, artifact_dir / LATEST_RUN_REPORT_NAME)
+    report_json = json.dumps(_report_to_jsonable(report), indent=2)
+    write_text_file(report_path, report_json)
+    write_text_file(artifact_dir / LATEST_RUN_REPORT_NAME, report_json)
     return report
 
 
