@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "band": {"files": 0, "functions": 2},
+  "band": {"files": 0, "functions": 0},
   "root_extras": ["semantic_layer"],
   "shape_contract": {
     "root_files": [],
