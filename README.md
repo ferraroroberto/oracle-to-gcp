@@ -366,6 +366,8 @@ The gate includes a docs ratchet: `README.md` stays under 40 KiB and `README.md`
 
 Beside the docs ratchet the gate runs seven more vendored, baselined ratchets: structure, instruction, doc-refs, dead-code, static (duplicates, unused names, curated bug and security patterns; needs `npx`), comment (no issue references in code comments) and conventions (`no-window`, `logging-not-print`, `no-drive-path`). Each fails only on a finding beyond its committed baseline, and an exit 3 (check could not run) fails as NOT CONFIRMED, never a pass. `CLAUDE.md` lists what each one checks.
 
+The last stdout line of a gate run is `GATE-RESULT: PASS` or `GATE-RESULT: FAIL`, including a failed stage, a missing `.venv` and an early terminating error; exit codes stay 0 and 1. Don't pipe the gate when its exit code matters (`... | tail` reports `tail`'s status, so a red run reads green); a caller that cannot avoid a pipe asserts on that line, and a run without it is not a pass.
+
 ## Rationale
 
 The design reasoning and tradeoffs are documented in `docs/architecture-rationale.md`. For an executive visual summary, open `docs/oracle-to-gcp-process-map.html` or the **Process Map** page in Streamlit. The short version: this project treats the LLM as one replaceable stateless function inside a deterministic migration pipeline. The hard parts are parsing, mapping, ordered execution, validation, and auditability.
