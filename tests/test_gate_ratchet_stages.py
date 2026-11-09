@@ -24,7 +24,7 @@ def gate_text() -> str:
 def test_invoke_stage_fails_on_every_non_zero_exit(gate_text):
     body = gate_text.split("function Invoke-Stage", 1)[1].split("\nInvoke-Stage ", 1)[0]
     assert "$LASTEXITCODE -ne 0" in body
-    assert "exit 1" in body
+    assert "Complete-Gate 1" in body
 
 
 @pytest.mark.parametrize("script", DIRECT_STAGES)
