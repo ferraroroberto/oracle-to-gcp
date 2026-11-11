@@ -34,7 +34,9 @@ from src.pipelines import oracle_to_bigquery
 from src.secrets import redact
 from src.sql_models import RunReport
 from src.table_registry import (
+    STORED_STATUSES,
     TableMapping,
+    derive_mapping_state,
     export_csv,
     import_csv,
     list_column_mappings,
@@ -260,7 +262,10 @@ def _render_table_correspondence_tab(registry_path: str) -> None:
             mime="text/csv",
             key="export_registry_csv",
         )
-        st.dataframe([asdict(row) for row in rows], width="stretch")
+        st.dataframe(
+            [{**asdict(row), "state": derive_mapping_state(row).describe()} for row in rows],
+            width="stretch",
+        )
     else:
         st.info("No correspondence rows yet. Run a script preflight or import a CSV template.")
 
@@ -290,7 +295,7 @@ def _render_table_correspondence_tab(registry_path: str) -> None:
             col1, col2, col3 = st.columns(3)
             oracle_schema = col1.text_input("Oracle schema", value="demo", key="map_oracle_schema")
             oracle_table = col2.text_input("Oracle table", key="map_oracle_table")
-            status = col3.selectbox("Status", ["pending", "ready", "blocked"], key="map_status")
+            status = col3.selectbox("Status", list(STORED_STATUSES), key="map_status")
             col1, col2, col3 = st.columns(3)
             bq_project = col1.text_input("BigQuery project", value="mock-gcp-project", key="map_bq_project")
             bq_dataset = col2.text_input("BigQuery dataset", value="mock_dataset", key="map_bq_dataset")

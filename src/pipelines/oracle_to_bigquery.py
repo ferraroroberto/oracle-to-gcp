@@ -29,6 +29,7 @@ from src.preflight import run_table_preflight
 from src.sql_models import RunReport, SqlUnit
 from src.sql_processing import build_units, materialize_variables
 from src.sqlite_db import connect_sqlite
+from src.table_registry import derive_mapping_state
 from src.trace import TraceRecorder
 from src.translator import TranslationEngine
 from src.validation import (
@@ -175,7 +176,11 @@ def _execute_stages(
         if not preflight.can_run:
             raise ValueError("table preflight failed: " + "; ".join(preflight.messages))
 
-        registry_mapping = {row.oracle_table: row.bigquery_table for row in preflight.mappings if row.ready}
+        registry_mapping = {
+            row.oracle_table: row.bigquery_table
+            for row in preflight.mappings
+            if derive_mapping_state(row).is_ready
+        }
         intermediate_mapping = _target_mapping(units)
         active_mapping = {**mapping_registry, **registry_mapping, **intermediate_mapping}
         _assert_all_sources_mapped(units, active_mapping)

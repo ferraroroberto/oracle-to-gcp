@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -12,13 +13,18 @@ from src.sql_models import SqlUnit
 from src.sql_processing import type_family as _type_family
 from src.table_registry import (
     ColumnMapping,
+    DerivedMappingState,
+    MappingState,
     TableMapping,
+    derive_mapping_state,
     ensure_pending,
     get_mapping,
     replace_column_mappings,
     seed_from_mapping_dict,
     update_reachability,
 )
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -76,28 +82,19 @@ def run_table_preflight(
             mappings.append(mapping)
             continue
 
-        if not mapping.bigquery_table:
+        if derive_mapping_state(mapping).state is MappingState.UNMAPPED:
             unknown.append(source)
             messages.append(f"{source}: pending BigQuery target")
             mappings.append(mapping)
             continue
 
-        oracle_ok = mapping.oracle_reachable or _table_reachable(oracle_conn, source)
-        bq_ok = mapping.bigquery_reachable or _table_reachable(bigquery_conn, mapping.bigquery_table)
-        mapping = update_reachability(
-            schema,
-            source,
-            oracle_reachable=oracle_ok,
-            bigquery_reachable=bq_ok,
-            path=registry_path,
+        mapping, derived = _probe_mapping(
+            schema, source, mapping, oracle_conn, bigquery_conn, registry_path
         )
         mappings.append(mapping)
-        if not mapping.ready:
+        if not derived.is_ready:
             blocked.append(source)
-            messages.append(
-                f"{source}: reachability incomplete oracle={mapping.oracle_reachable} "
-                f"bigquery={mapping.bigquery_reachable} status={mapping.status}"
-            )
+            messages.append(f"{source}: {derived.describe()}")
 
     column_mappings: list[ColumnMapping] = []
     schema_blocked: list[str] = []
@@ -131,6 +128,33 @@ def run_table_preflight(
         column_mappings=column_mappings,
         messages=messages,
     )
+
+
+def _probe_mapping(
+    schema: str,
+    source: str,
+    mapping: TableMapping,
+    oracle_conn: sqlite3.Connection,
+    bigquery_conn: sqlite3.Connection,
+    registry_path: str | None,
+) -> tuple[TableMapping, DerivedMappingState]:
+    """Re-probe both sides of a mapped table, store the answers, and return its derived state."""
+    # A stored reachable flag is history, not a fact, so every preflight asks again.
+    oracle_ok = _table_reachable(oracle_conn, source)
+    bq_ok = _table_reachable(bigquery_conn, mapping.bigquery_table)
+    mapping = update_reachability(
+        schema,
+        source,
+        oracle_reachable=oracle_ok,
+        bigquery_reachable=bq_ok,
+        path=registry_path,
+    )
+    derived = derive_mapping_state(
+        mapping,
+        oracle_probe_failed=oracle_ok is None,
+        bigquery_probe_failed=bq_ok is None,
+    )
+    return mapping, derived
 
 
 def refresh_schema_compatibility(
@@ -208,9 +232,16 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def _table_reachable(conn: sqlite3.Connection, table: str) -> bool:
+def _table_reachable(conn: sqlite3.Connection, table: str) -> bool | None:
+    """Probe one table: True if it answers, False if it is absent, None if the probe could not run."""
     try:
         conn.execute(f"SELECT * FROM {table} LIMIT 1").fetchone()
-    except sqlite3.Error:
-        return False
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc):
+            return False
+        log.warning("⚠️ probe of %s could not be run: %s", table, exc)
+        return None
+    except sqlite3.Error as exc:
+        log.warning("⚠️ probe of %s could not be run: %s", table, exc)
+        return None
     return True
