@@ -138,6 +138,13 @@ enabled  = true
 baseline = ".conventions-ratchet-baseline.json"
 rules    = ["no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "state-literal", "state-set-repeat", "state-write"]
 
+# Declared state machines: the state rules never report a module listed here.
+[[state_machines]]
+name   = "table-mapping"
+module = "src/table_registry.py"
+type   = "MappingState"
+derive = "derive_mapping_state"
+
 # A raw connect skips the row factory and, in a `with` block, never closes the file.
 [[conventions_ratchet.must_use]]
 call   = "sqlite3.connect"

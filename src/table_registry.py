@@ -7,6 +7,7 @@ import io
 import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,54 @@ CSV_COLUMNS = [
     "bigquery_checked_at",
     "notes",
 ]
+
+
+# Stored operator intent (the `status` column and CSV field). Only HOLD_STATUS changes behaviour:
+# it keeps a mapping blocked until the operator clears it. The other two spellings both mean "no
+# hold"; readiness is always derived by `derive_mapping_state`, never read from this column.
+PENDING_STATUS = "pending"
+READY_STATUS = "ready"
+HOLD_STATUS = "blocked"
+STORED_STATUSES = (PENDING_STATUS, READY_STATUS, HOLD_STATUS)
+
+
+class MappingState(StrEnum):
+    """Where a table mapping stands, derived from stored intent plus probe facts."""
+
+    UNMAPPED = "unmapped"  # no BigQuery table is named yet
+    UNCHECKED = "unchecked"  # mapped, but a side has never been probed
+    READY = "ready"  # mapped, not held, both sides probed reachable
+    BLOCKED = "blocked"  # cannot run; `reasons` says why
+    UNKNOWN = "unknown"  # a probe could not be run, so reachability is not established
+
+
+class MappingReason(StrEnum):
+    """Why a mapping is blocked or unknown."""
+
+    HELD = "held"  # the operator set status to blocked; only the operator clears it
+    ORACLE_UNREACHABLE = "oracle_unreachable"  # the last Oracle probe answered no
+    BIGQUERY_UNREACHABLE = "bigquery_unreachable"  # the last BigQuery probe answered no
+    ORACLE_PROBE_FAILED = "oracle_probe_failed"  # the Oracle probe could not be run
+    BIGQUERY_PROBE_FAILED = "bigquery_probe_failed"  # the BigQuery probe could not be run
+
+
+@dataclass(frozen=True, slots=True)
+class DerivedMappingState:
+    """A mapping state with the reasons behind it."""
+
+    state: MappingState
+    reasons: tuple[MappingReason, ...] = ()
+
+    @property
+    def is_ready(self) -> bool:
+        """Whether the mapping may run."""
+        return self.state is MappingState.READY
+
+    def describe(self) -> str:
+        """Return the state and its reasons as one readable string."""
+        if not self.reasons:
+            return self.state.value
+        return f"{self.state.value} ({', '.join(reason.value for reason in self.reasons)})"
 
 
 @dataclass(slots=True)
@@ -59,7 +108,7 @@ class TableMapping:
     bigquery_project: str = ""
     bigquery_dataset: str = ""
     bigquery_table: str = ""
-    status: str = "pending"
+    status: str = PENDING_STATUS
     oracle_reachable: bool = False
     oracle_checked_at: str = ""
     bigquery_reachable: bool = False
@@ -69,12 +118,54 @@ class TableMapping:
     @property
     def ready(self) -> bool:
         """Return whether this row is complete enough for execution."""
-        return (
-            self.status == "ready"
-            and bool(self.bigquery_table)
-            and self.oracle_reachable
-            and self.bigquery_reachable
-        )
+        return derive_mapping_state(self).is_ready
+
+
+def derive_mapping_state(
+    mapping: TableMapping,
+    *,
+    oracle_probe_failed: bool = False,
+    bigquery_probe_failed: bool = False,
+) -> DerivedMappingState:
+    """Map one mapping's stored facts to its state; the only code that does.
+
+    A probe that could not be run is not a "no": the caller says so with `*_probe_failed`, since
+    the registry has no column to store it, and that side's stored flag is not trusted. A known
+    block (a hold, or a probe that answered no) outranks `unknown`. A hold on a row with no
+    BigQuery table stays unmapped; it applies once the row is mapped.
+    """
+    if not mapping.bigquery_table:
+        return DerivedMappingState(MappingState.UNMAPPED)
+    reasons: list[MappingReason] = []
+    if mapping.status == HOLD_STATUS:
+        reasons.append(MappingReason.HELD)
+    oracle_answer = None if oracle_probe_failed else _side_answer(mapping.oracle_reachable, mapping.oracle_checked_at)
+    bigquery_answer = (
+        None if bigquery_probe_failed else _side_answer(mapping.bigquery_reachable, mapping.bigquery_checked_at)
+    )
+    if oracle_answer is False:
+        reasons.append(MappingReason.ORACLE_UNREACHABLE)
+    if bigquery_answer is False:
+        reasons.append(MappingReason.BIGQUERY_UNREACHABLE)
+    if reasons:
+        return DerivedMappingState(MappingState.BLOCKED, tuple(reasons))
+    failed = []
+    if oracle_probe_failed:
+        failed.append(MappingReason.ORACLE_PROBE_FAILED)
+    if bigquery_probe_failed:
+        failed.append(MappingReason.BIGQUERY_PROBE_FAILED)
+    if failed:
+        return DerivedMappingState(MappingState.UNKNOWN, tuple(failed))
+    if oracle_answer and bigquery_answer:
+        return DerivedMappingState(MappingState.READY)
+    return DerivedMappingState(MappingState.UNCHECKED)
+
+
+def _side_answer(reachable: bool, checked_at: str) -> bool | None:
+    """Return a side's last probe answer, or None when it was never probed."""
+    if reachable:
+        return True
+    return False if checked_at else None
 
 
 def registry_path(path: str | Path | None = None) -> Path:
@@ -225,7 +316,7 @@ def seed_from_mapping_dict(
                 bigquery_project=bigquery_project,
                 bigquery_dataset=bigquery_dataset,
                 bigquery_table=target.lower(),
-                status="ready",
+                status=READY_STATUS,
             ),
             path,
         )
@@ -239,7 +330,7 @@ def update_reachability(
     bigquery_reachable: bool | None = None,
     path: str | Path | None = None,
 ) -> TableMapping:
-    """Update reachability flags and timestamps."""
+    """Update reachability flags and timestamps; the stored status is the operator's and is left alone."""
     mapping = ensure_pending(oracle_schema, oracle_table, path)
     now = _now()
     if oracle_reachable is not None:
@@ -248,10 +339,6 @@ def update_reachability(
     if bigquery_reachable is not None:
         mapping.bigquery_reachable = bigquery_reachable
         mapping.bigquery_checked_at = now
-    if mapping.bigquery_table and mapping.oracle_reachable and mapping.bigquery_reachable:
-        mapping.status = "ready"
-    elif mapping.status == "ready":
-        mapping.status = "blocked"
     upsert_mapping(mapping, path)
     return mapping
 
@@ -339,7 +426,7 @@ def template_csv() -> str:
             "bigquery_project": "mock-gcp-project",
             "bigquery_dataset": "mock_dataset",
             "bigquery_table": "raw_sales_orders",
-            "status": "ready",
+            "status": READY_STATUS,
             "oracle_reachable": "false",
             "bigquery_reachable": "false",
             "notes": "example row; replace or delete",
@@ -367,7 +454,7 @@ def import_csv(csv_text: str, path: str | Path | None = None) -> int:
                 bigquery_project=str(raw.get("bigquery_project", "")).strip(),
                 bigquery_dataset=str(raw.get("bigquery_dataset", "")).strip(),
                 bigquery_table=str(raw.get("bigquery_table", "")).strip().lower(),
-                status=str(raw.get("status", "pending") or "pending").strip().lower(),
+                status=str(raw.get("status", PENDING_STATUS) or PENDING_STATUS).strip().lower(),
                 oracle_reachable=_to_bool(raw.get("oracle_reachable")),
                 oracle_checked_at=str(raw.get("oracle_checked_at", "") or "").strip(),
                 bigquery_reachable=_to_bool(raw.get("bigquery_reachable")),
