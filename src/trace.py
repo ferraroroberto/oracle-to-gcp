@@ -10,6 +10,7 @@ from typing import Any
 
 from src.fs_write import write_text_file
 from src.pipeline_config import PipelineConfig, TraceConfig, config_to_dict
+from src.sql_models import RunStatus
 
 
 @dataclass(slots=True)
@@ -59,7 +60,7 @@ class TraceRecorder:
         self,
         path: Path,
         *,
-        status: str,
+        status: RunStatus,
         pipeline_config: PipelineConfig,
         artifacts: dict[str, str] | None = None,
     ) -> None:

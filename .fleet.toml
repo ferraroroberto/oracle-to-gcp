@@ -145,6 +145,12 @@ module = "src/table_registry.py"
 type   = "MappingState"
 derive = "derive_mapping_state"
 
+[[state_machines]]
+name   = "translation-run"
+module = "src/sql_models.py"
+type   = "RunStatus"
+derive = "derive_run_status"
+
 # A raw connect skips the row factory and, in a `with` block, never closes the file.
 [[conventions_ratchet.must_use]]
 call   = "sqlite3.connect"

@@ -42,9 +42,11 @@ def cmd_catalog_generate(layer: Layer, args: argparse.Namespace) -> int:
     snapshot = catalog.collect(layer)
     written = catalog.write(layer, snapshot)
     summary = {p: len(snapshot.tables.get(p, {})) for p in ("legacy", "cloud")}
+    # state-literal-exempt: the migration map's `status` is a two-value label derived in catalog.py from whether a cloud twin exists, not a lifecycle with transitions
+    pending = sum(1 for r in snapshot.migration if r["status"] == "pending")
     _print({"tables": summary, "files": len(written)}, args.json,
            f"✅ Catalog generated: {summary['legacy']} legacy + {summary['cloud']} cloud tables, "
-           f"{sum(1 for r in snapshot.migration if r['status'] == 'pending')} not yet migrated")
+           f"{pending} not yet migrated")
     return 0
 
 

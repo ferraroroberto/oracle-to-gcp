@@ -309,6 +309,7 @@ src/
   llm_client.py                  Local hub client
   mock_environment.py            SQLite mock data bootstrap
   preflight.py                   Table readiness go/no-go checks
+  sql_models.py                  SQL unit and run records, run-status machine (docs/translation-run-state.md)
   sql_processing.py              Materialization, splitting, table extraction
   table_registry.py              SQLite correspondence registry, mapping-state machine, CSV import/export
   translator.py                  Bounded translation function
