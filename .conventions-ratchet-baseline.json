@@ -1,9 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "semantic_layer/sl/cli.py", "counts": {"state-literal": 1}},
-    {"key": "src/execution.py", "counts": {"state-literal": 1}},
-    {"key": "src/pipelines/oracle_to_bigquery.py", "counts": {"state-literal": 1}},
-    {"key": "src/sql_models.py", "counts": {"state-literal": 1}}
-  ]
+  "entries": []
 }

@@ -11,7 +11,7 @@ from src.config import ROOT_DIR
 from src.fs_write import ensure_dir, write_text_file
 from src.pipeline_config import PipelineConfig
 from src.pipelines.oracle_to_bigquery import LATEST_RUN_REPORT_NAME, run
-from src.sql_models import RunReport
+from src.sql_models import RunReport, RunStatus
 
 
 @dataclass(slots=True)
@@ -20,7 +20,7 @@ class ScriptExecution:
 
     script_path: Path
     result_dir: Path
-    status: str
+    status: RunStatus
     artifacts: dict[str, str]
     error: str = ""
 
@@ -94,7 +94,7 @@ def run_sql_batch(
                 ScriptExecution(
                     script_path=script,
                     result_dir=result_dir,
-                    status="failed",
+                    status=RunStatus.FAILED,
                     artifacts=artifacts,
                     error=str(exc),
                 )

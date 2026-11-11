@@ -26,7 +26,7 @@ from src.pipeline_config import (
     with_overrides,
 )
 from src.preflight import run_table_preflight
-from src.sql_models import RunReport, SqlUnit
+from src.sql_models import RunReport, RunStatus, SqlUnit, UnitStatus, derive_run_status
 from src.sql_processing import build_units, materialize_variables
 from src.sqlite_db import connect_sqlite
 from src.table_registry import derive_mapping_state
@@ -114,7 +114,7 @@ def run(
         )
         recorder.write(
             trace_path,
-            status="failed",
+            status=RunStatus.FAILED,
             pipeline_config=active_config,
             artifacts={"trace_json": str(trace_path)},
         )
@@ -242,7 +242,7 @@ def _write_run_artifacts(
     write_text_file(script_path, final_script + "\n")
     write_text_file(lineage_path, render_lineage_markdown(units, script_id=script_id))
 
-    status = "validated" if all(unit.status == "validated" for unit in units) else "flagged"
+    status = derive_run_status(units)
     artifacts = {
         "final_bigquery_sql": str(script_path),
         "run_report_json": str(report_path),
@@ -332,14 +332,14 @@ def _translate_execute_validate(
         )
 
         if validation["matched"]:
-            unit.status = "validated"
+            unit.transition(UnitStatus.VALIDATED)
             unit.repair_attempts = attempt
             record("Stage 6 validated unit %d after %d repair attempts", unit.id, attempt)
             return
 
         record("Stage 6 mismatch for unit %d: %s", unit.id, validation["diffs"])
 
-    unit.status = "flagged"
+    unit.transition(UnitStatus.FLAGGED)
     unit.repair_attempts = repair_limit
     record("Stage 7 flagged unit %d for human review after %d attempts", unit.id, repair_limit)
 
@@ -481,7 +481,7 @@ def main(argv: list[str] | None = None) -> int:
         for result in results:
             suffix = f" error={result.error}" if result.error else ""
             print(f"{result.script_path} status={result.status} result_dir={result.result_dir}{suffix}")
-        return 0 if all(result.status == "validated" for result in results) else 1
+        return 0 if all(result.status is RunStatus.VALIDATED for result in results) else 1
 
     report = run(pipeline_config=config)
     print(f"status={report.status}")
