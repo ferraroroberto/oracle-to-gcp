@@ -71,6 +71,8 @@ def render() -> None:
     )
     try:
         pipeline_config = load_pipeline_config(Path(config_path))
+        # The editors save what they show, so they show the file, not the LLM_* env overrides.
+        disk_config = load_pipeline_config(Path(config_path), apply_env=False)
     except Exception as exc:
         st.error(f"Could not load pipeline config: {exc}")
         return
@@ -83,11 +85,11 @@ def render() -> None:
     with execution_tab:
         _render_execution_tab(pipeline_config)
     with config_tab:
-        _render_connection_configuration_tab(Path(config_path), pipeline_config)
+        _render_connection_configuration_tab(Path(config_path), disk_config, pipeline_config)
     with table_tab:
         _render_table_correspondence_tab(pipeline_config.execution.table_registry_path)
     with raw_tab:
-        _render_configuration_tab(Path(config_path), pipeline_config)
+        _render_configuration_tab(Path(config_path), disk_config)
 
 
 def _render_demo_tab(pipeline_config, editable: bool = True) -> None:
@@ -168,9 +170,11 @@ def _render_execution_tab(pipeline_config) -> None:
     _render_previous_results(active_config)
 
 
-def _render_connection_configuration_tab(config_path: Path, pipeline_config) -> None:
+def _render_connection_configuration_tab(config_path: Path, disk_config, effective_config) -> None:
     st.caption("Edit production-shaped connection metadata. Secrets stay in .env/environment variables, not JSON.")
-    raw = config_to_dict(pipeline_config)
+    if effective_config.llm != disk_config.llm:
+        st.info("LLM_BASE_URL / LLM_MODEL / LLM_TIMEOUT_SECONDS environment variables override the saved LLM settings for runs.")
+    raw = config_to_dict(disk_config)
 
     with st.form("connection_config_form"):
         st.subheader("LLM")
@@ -239,7 +243,7 @@ def _render_connection_configuration_tab(config_path: Path, pipeline_config) -> 
         st.json(redact(config_to_dict(saved)))
 
     if st.button("Test configured connections", key="test_connections"):
-        results = [result.to_dict() for result in test_all_connections(pipeline_config)]
+        results = [result.to_dict() for result in test_all_connections(effective_config)]
         st.dataframe(results, width="stretch")
         st.json(results)
 

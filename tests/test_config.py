@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 
+import pytest
+
 from src import config, logger
-from src.pipeline_config import load_pipeline_config, with_overrides
+from src.pipeline_config import LLM_ENV_OVERRIDES, LLMConfig, load_pipeline_config, with_overrides
 
 
 def test_data_dirs_are_anchored_under_root() -> None:
@@ -64,6 +67,50 @@ def test_pipeline_config_loads_json_and_applies_overrides(tmp_path) -> None:
     assert overridden.llm.temperature == 0.7
     assert config.resolve_under_root("data/output/custom") == config.ROOT_DIR / "data" / "output" / "custom"
     assert config.resolve_under_root(config.ROOT_DIR / "x") == config.ROOT_DIR / "x"
+
+
+def test_llm_env_vars_override_the_committed_config(monkeypatch) -> None:
+    """The committed JSON names every LLM field, so env vars only work as overrides on top of it."""
+    monkeypatch.setenv("LLM_BASE_URL", "http://hub.example:9000")
+    monkeypatch.setenv("LLM_MODEL", "env-model")
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "42")
+
+    effective = load_pipeline_config().llm
+    on_disk = load_pipeline_config(apply_env=False).llm
+
+    assert (effective.base_url, effective.model, effective.timeout_seconds) == (
+        "http://hub.example:9000",
+        "env-model",
+        42.0,
+    )
+    assert on_disk.base_url != effective.base_url
+    assert on_disk.model != effective.model
+    assert on_disk.timeout_seconds != effective.timeout_seconds
+
+
+def test_unset_or_empty_llm_env_vars_leave_the_file_values(monkeypatch) -> None:
+    monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.setenv("LLM_MODEL", "  ")
+    monkeypatch.delenv("LLM_TIMEOUT_SECONDS", raising=False)
+
+    assert load_pipeline_config().llm == load_pipeline_config(apply_env=False).llm
+
+
+def test_invalid_llm_timeout_env_var_names_the_variable(monkeypatch) -> None:
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "soon")
+
+    with pytest.raises(ValueError, match="LLM_TIMEOUT_SECONDS"):
+        load_pipeline_config()
+
+
+def test_every_llm_env_override_is_documented_in_the_readme() -> None:
+    """The README promises each override; the loader's table and the README must list the same variables."""
+    readme = (config.ROOT_DIR / "README.md").read_text(encoding="utf-8")
+    llm_fields = {field.name for field in dataclasses.fields(LLMConfig)}
+
+    for env_name, (field_name, _parse) in LLM_ENV_OVERRIDES.items():
+        assert f"$env:{env_name}" in readme
+        assert field_name in llm_fields
 
 
 def test_every_config_constant_is_read_by_product_code() -> None:

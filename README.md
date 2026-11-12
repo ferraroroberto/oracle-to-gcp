@@ -107,7 +107,7 @@ Default model:
 claude-haiku-4-5
 ```
 
-Override with environment variables:
+Override with environment variables (when set and non-empty, `LLM_BASE_URL`, `LLM_MODEL` and `LLM_TIMEOUT_SECONDS` win over the values in `config/pipeline.json` for every run; the config editors still show and save the file's own values):
 
 ```powershell
 $env:LLM_BASE_URL = "http://127.0.0.1:8000"

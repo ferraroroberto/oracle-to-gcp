@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -138,14 +139,45 @@ def _config_from_raw(raw: dict[str, Any], config_path: Path) -> PipelineConfig:
     )
 
 
-def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
-    """Load pipeline configuration from JSON, falling back to defaults."""
-    config_path = resolve_under_root(path if path is not None else DEFAULT_PIPELINE_CONFIG_PATH)
-    if not config_path.exists():
-        return PipelineConfig(path=str(config_path))
+# Environment variable -> (LLMConfig field, parser). The committed JSON always
+# names these fields, so the variables must override the loaded value to have
+# any effect (README documents them as overrides).
+LLM_ENV_OVERRIDES: dict[str, tuple[str, type]] = {
+    "LLM_BASE_URL": ("base_url", str),
+    "LLM_MODEL": ("model", str),
+    "LLM_TIMEOUT_SECONDS": ("timeout_seconds", float),
+}
 
-    raw = json.loads(config_path.read_text(encoding="utf-8"))
-    return _config_from_raw(raw, config_path)
+
+def _env_llm_updates() -> dict[str, Any]:
+    """Read the LLM_* overrides that are set (non-empty) in the current environment."""
+    updates: dict[str, Any] = {}
+    for env_name, (field_name, parse) in LLM_ENV_OVERRIDES.items():
+        value = os.environ.get(env_name, "").strip()
+        if not value:
+            continue
+        try:
+            updates[field_name] = parse(value)
+        except ValueError as exc:
+            raise ValueError(f"{env_name} must be a valid {parse.__name__}, got {value!r}") from exc
+    return updates
+
+
+def load_pipeline_config(path: Path | str | None = None, *, apply_env: bool = True) -> PipelineConfig:
+    """Load pipeline configuration from JSON, falling back to defaults.
+
+    With ``apply_env`` the ``LLM_*`` environment variables override the loaded
+    LLM settings (the effective config a run uses). Pass ``apply_env=False``
+    for the on-disk values, which a config editor must save back unchanged.
+    """
+    config_path = resolve_under_root(path if path is not None else DEFAULT_PIPELINE_CONFIG_PATH)
+    if config_path.exists():
+        config = _config_from_raw(json.loads(config_path.read_text(encoding="utf-8")), config_path)
+    else:
+        config = PipelineConfig(path=str(config_path))
+    if not apply_env:
+        return config
+    return replace(config, llm=replace(config.llm, **_env_llm_updates()))
 
 
 def config_to_dict(config: PipelineConfig) -> dict[str, Any]:
