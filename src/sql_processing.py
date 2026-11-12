@@ -171,6 +171,23 @@ def type_family(raw_type: str) -> str:
     return normalized.lower() or "unknown"
 
 
+def classify_column(oracle_family: str | None, bigquery_family: str | None) -> tuple[str, str]:
+    """Classify one column pair by type family; ``None`` means the column is absent on that side.
+
+    Returns ``(status, note)`` with status one of ``extra_target``,
+    ``missing_target``, ``type_mismatch`` or ``compatible``. Single source of
+    truth for the verdict — shared by ``src.preflight`` and
+    ``tests.audits.schema_compatibility_audit`` so both reach the same answer.
+    """
+    if oracle_family is None:
+        return "extra_target", "Column exists only in BigQuery target"
+    if bigquery_family is None:
+        return "missing_target", "Column exists in Oracle source but is missing from BigQuery target"
+    if oracle_family != bigquery_family:
+        return "type_mismatch", f"Type family changed from {oracle_family} to {bigquery_family}"
+    return "compatible", ""
+
+
 def _clean_identifier(identifier: str) -> str:
     return identifier.strip("`\"").split(".")[-1].lower()
 

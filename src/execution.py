@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.config import ROOT_DIR
+from src.config import resolve_under_root
 from src.fs_write import ensure_dir, write_text_file
 from src.pipeline_config import PipelineConfig
 from src.pipelines.oracle_to_bigquery import LATEST_RUN_REPORT_NAME, run
@@ -25,15 +25,9 @@ class ScriptExecution:
     error: str = ""
 
 
-def resolve_user_path(path: str | Path) -> Path:
-    """Resolve a user/config path relative to the repo root."""
-    resolved = Path(path)
-    return resolved if resolved.is_absolute() else ROOT_DIR / resolved
-
-
 def ensure_execution_input_dir(config: PipelineConfig) -> Path:
     """Create and return the configured execution input directory."""
-    return ensure_dir(resolve_user_path(config.execution.default_input_dir))
+    return ensure_dir(resolve_under_root(config.execution.default_input_dir))
 
 
 def result_dir_for_script(script_path: Path, suffix: str) -> Path:
@@ -43,7 +37,7 @@ def result_dir_for_script(script_path: Path, suffix: str) -> Path:
 
 def list_sql_scripts(directory: str | Path) -> list[Path]:
     """Return non-recursive `.sql` scripts in a directory."""
-    root = resolve_user_path(directory)
+    root = resolve_under_root(directory)
     if not root.exists():
         return []
     if not root.is_dir():
@@ -58,7 +52,7 @@ def run_sql_file(
     result_suffix: str | None = None,
 ) -> ScriptExecution:
     """Run the pipeline for one SQL file and write sibling result artifacts."""
-    resolved_script = resolve_user_path(script_path)
+    resolved_script = resolve_under_root(script_path)
     if resolved_script.suffix.lower() != ".sql":
         raise ValueError(f"SQL script must end with .sql: {resolved_script}")
     if not resolved_script.is_file():
@@ -104,7 +98,7 @@ def run_sql_batch(
 
 def find_previous_results(root: str | Path, *, result_suffix: str = "_bq") -> list[Path]:
     """Find previous report JSON files under sibling result directories."""
-    directory = resolve_user_path(root)
+    directory = resolve_under_root(root)
     if not directory.exists() or not directory.is_dir():
         return []
     reports: list[Path] = []
@@ -116,7 +110,7 @@ def find_previous_results(root: str | Path, *, result_suffix: str = "_bq") -> li
 
 def load_report_json(report_path: str | Path) -> dict[str, Any]:
     """Load a previous pipeline report JSON."""
-    resolved = resolve_user_path(report_path)
+    resolved = resolve_under_root(report_path)
     return json.loads(resolved.read_text(encoding="utf-8"))
 
 

@@ -127,3 +127,17 @@ def test_enabled_flags_allow_the_commands(layer_root: Path, sl) -> None:
     assert load_layer(layer_root).phase2_enabled("navigator")
     code, _ = sl("build", "--navigator")
     assert code == 0 and (layer_root / "build" / "navigator.html").exists()
+
+
+@pytest.mark.parametrize(
+    ("condition", "expected"),
+    [
+        ("{from}.a = {to}.b AND {from}.c = {to}.d", (["a", "c"], ["b", "d"])),
+        ("{from}.a = {to}.b and {from}.c = {to}.d", (["a", "c"], ["b", "d"])),
+        ("({from}.a = {to}.b) AND ({from}.c = {to}.d)", (["a", "c"], ["b", "d"])),
+        ("{to}.b = {from}.a", (["a"], ["b"])),
+        ("{from}.a = {to}.b AND {from}.c > {to}.d", (["a"], ["b"])),
+    ],
+)
+def test_osi_join_columns_come_from_the_parsed_condition(condition: str, expected) -> None:
+    assert export_osi._join_columns(condition, "bigquery") == expected

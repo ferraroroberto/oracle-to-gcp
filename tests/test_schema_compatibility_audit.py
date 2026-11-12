@@ -130,3 +130,30 @@ def test_schema_audit_records_table_metadata_errors(tmp_path: Path) -> None:
 
     assert comparisons[0].compatibility_status == "metadata_error"
     assert summaries[0].status == "blocked"
+
+
+def test_preflight_and_audit_reach_the_same_verdict_for_every_column_case() -> None:
+    """Both consumers share one classifier, so no case can get a different status or note."""
+    from src.preflight import _column_mapping
+    from src.sql_processing import type_family
+    from src.table_registry import TableMapping
+    from tests.audits.schema_compatibility_audit import (
+        ColumnMetadata,
+        TablePair,
+        _compare_one,
+    )
+
+    mapping = TableMapping(
+        oracle_schema="DEMO", oracle_table="t", bigquery_project="p", bigquery_dataset="d", bigquery_table="t"
+    )
+    pair = TablePair("DEMO", "t", "p", "d", "t")
+    cases = [(None, "STRING"), ("NUMBER", None), ("VARCHAR2", "STRING"), ("NUMBER", "STRING"), ("DATE", "TIMESTAMP")]
+    for oracle_type, bigquery_type in cases:
+        preflight_row = _column_mapping(mapping, "c", oracle_type, bigquery_type, "now")
+        audit_row = _compare_one(
+            pair,
+            ColumnMetadata("c", oracle_type, type_family(oracle_type)) if oracle_type else None,
+            ColumnMetadata("c", bigquery_type, type_family(bigquery_type)) if bigquery_type else None,
+        )
+        assert preflight_row.compatibility_status == audit_row.compatibility_status, (oracle_type, bigquery_type)
+        assert preflight_row.notes == audit_row.notes, (oracle_type, bigquery_type)

@@ -7,7 +7,13 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from src.config import LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_SECONDS, ROOT_DIR
+from src.config import (
+    LLM_BASE_URL,
+    LLM_MODEL,
+    LLM_TIMEOUT_SECONDS,
+    ROOT_DIR,
+    resolve_under_root,
+)
 from src.fs_write import ensure_dir, write_text_file
 
 DEFAULT_PIPELINE_CONFIG_PATH = ROOT_DIR / "config" / "pipeline.json"
@@ -134,9 +140,7 @@ def _config_from_raw(raw: dict[str, Any], config_path: Path) -> PipelineConfig:
 
 def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
     """Load pipeline configuration from JSON, falling back to defaults."""
-    config_path = Path(path) if path is not None else DEFAULT_PIPELINE_CONFIG_PATH
-    if not config_path.is_absolute():
-        config_path = ROOT_DIR / config_path
+    config_path = resolve_under_root(path if path is not None else DEFAULT_PIPELINE_CONFIG_PATH)
     if not config_path.exists():
         return PipelineConfig(path=str(config_path))
 
@@ -153,19 +157,11 @@ def config_to_dict(config: PipelineConfig) -> dict[str, Any]:
 
 def write_pipeline_config(path: Path | str, raw: dict[str, Any]) -> PipelineConfig:
     """Validate and write a pipeline JSON config file."""
-    config_path = Path(path)
-    if not config_path.is_absolute():
-        config_path = ROOT_DIR / config_path
+    config_path = resolve_under_root(path)
     validated = _config_from_raw(raw, config_path)
     ensure_dir(config_path.parent)
     write_text_file(config_path, json.dumps(config_to_dict(validated), indent=2) + "\n")
     return validated
-
-
-def resolve_output_dir(output_dir: str) -> Path:
-    """Resolve an output directory from config relative to the repo root."""
-    path = Path(output_dir)
-    return path if path.is_absolute() else ROOT_DIR / path
 
 
 def with_overrides(

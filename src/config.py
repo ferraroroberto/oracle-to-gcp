@@ -18,6 +18,14 @@ OUTPUT_DIR = DATA_DIR / "output"
 LOG_DIR = DATA_DIR / "logs"
 EXAMPLES_DIR = DATA_DIR / "examples"
 
+
+
+def resolve_under_root(path: str | Path) -> Path:
+    """Return ``path`` as given when absolute, else anchored under the repo root."""
+    resolved = Path(path)
+    return resolved if resolved.is_absolute() else ROOT_DIR / resolved
+
+
 APP_NAME = os.getenv("ORACLE_TO_GCP_APP_NAME", "Oracle to GCP")
 # Set by launch_server.bat / launch_server.sh: the app is reachable through a
 # shared link, so the UI offers only the built-in demo (see translator_demo).
