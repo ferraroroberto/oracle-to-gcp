@@ -26,7 +26,8 @@ One pre-ship gate runs byte-compile, `ruff`, the vendored ratchets below, the se
 - dead-code (`scripts/dead_code_ratchet.py`): a new Python function, class or method that nothing in the tree refers to.
 - static (`scripts/static_ratchet.py`): a duplicated block, an unused import or variable, or a curated ruff bug/security finding; needs `npx` and `ruff`, and a missing one is NOT CONFIRMED, never a pass.
 - comment (`scripts/comment_ratchet.py`): a product-code file carries more `#NNN` issue references in comments than recorded.
-- conventions (`scripts/conventions_ratchet.py`): a Python file has more hits of an enabled rule (`no-window`, `logging-not-print`, `no-drive-path`, `subprocess-timeout`) than recorded; a call that must break one carries a reasoned `# <rule>-exempt: ...` marker.
+- conventions (`scripts/conventions_ratchet.py`): a Python file has more hits of an enabled rule than recorded. The rules enabled in `.fleet.toml`: `no-window`, `logging-not-print`, `no-drive-path`, `subprocess-timeout`, plus the state suspects `state-literal`, `state-set-repeat` and `state-write` (a lifecycle string or flag handled outside a declared `[[state_machines]]` module). A call that must break a rule carries a reasoned `# <rule>-exempt: ...` marker.
+- runtime write (`scripts/runtime_write_ratchet.py`): a Python file gains a write target that resolves under a code folder (`src`, `app`, `scripts`, `semantic_layer`), or the test run leaves an untracked or ignored file there; a target it cannot resolve is NOT CONFIRMED, never clean.
 
 ```powershell
 & .\scripts\verify-before-ship.ps1
