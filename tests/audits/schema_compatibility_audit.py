@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src import bigquery_io
-from src.sql_processing import type_family
+from src.sql_processing import classify_column, type_family
 from src.sqlite_db import transaction
 from tests.audits._common import configure_logging as _configure_logging
 from tests.audits._common import load_json as _load_json
@@ -27,6 +27,7 @@ log = logging.getLogger("schema_compatibility_audit")
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "audits" / "schema_audit_config.json"
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9_-]+$")
+_STATUS_SEVERITY = {"extra_target": "warning", "missing_target": "error", "type_mismatch": "error", "compatible": "ok"}
 
 
 @dataclass(slots=True)
@@ -482,22 +483,12 @@ def _compare_one(
 ) -> ColumnComparison:
     oracle_present = oracle is not None
     bigquery_present = bigquery is not None
-    notes: list[str] = []
-    if not oracle_present:
-        status = "extra_target"
-        severity = "warning"
-        notes.append("Column exists only in BigQuery target")
-    elif not bigquery_present:
-        status = "missing_target"
-        severity = "error"
-        notes.append("Column exists in Oracle source but is missing from BigQuery target")
-    elif oracle.type_family != bigquery.type_family:
-        status = "type_mismatch"
-        severity = "error"
-        notes.append(f"Type family changed from {oracle.type_family} to {bigquery.type_family}")
-    else:
-        status = "compatible"
-        severity = "ok"
+    status, note = classify_column(
+        oracle.type_family if oracle else None,
+        bigquery.type_family if bigquery else None,
+    )
+    severity = _STATUS_SEVERITY[status]
+    notes: list[str] = [note] if note else []
 
     if oracle_present and bigquery_present and oracle.type_family == bigquery.type_family:
         warnings = _compatibility_warnings(oracle, bigquery)

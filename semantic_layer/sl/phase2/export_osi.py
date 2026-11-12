@@ -22,9 +22,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from sqlglot import exp
+
 from semantic_layer.sl.common import Layer, write_yaml
 from semantic_layer.sl.model import Definition, load_model
-from semantic_layer.sl.sqlutil import substitute
+from semantic_layer.sl.sqlutil import as_join, split_conjuncts, substitute
 
 SPEC_VERSION = "0.2.0.dev0"
 VENDOR = "TEAM_SEMANTIC_LAYER"
@@ -42,6 +44,23 @@ def _governance(definition: Definition) -> list[dict[str, str]]:
         "team": owner.get("team"), "steward": owner.get("steward"),
         "review_by": str(definition.data.get("review_by") or ""),
     }, sort_keys=True)}]
+
+
+def _join_columns(condition: str, dialect: str) -> tuple[list[str], list[str]]:
+    """Column pairs of a relationship's equality terms, as (``{from}`` side, ``{to}`` side).
+
+    Only ``f.col = o.col`` terms map to OSI's column lists; other predicates are skipped.
+    """
+    from_cols: list[str] = []
+    to_cols: list[str] = []
+    for term in split_conjuncts(as_join(condition, dialect)):
+        if not isinstance(term, exp.EQ):
+            continue
+        sides = {column.table: column.name for column in term.find_all(exp.Column)}
+        if "f" in sides and "o" in sides:
+            from_cols.append(sides["f"])
+            to_cols.append(sides["o"])
+    return from_cols, to_cols
 
 
 def _ai_context(definition: Definition) -> dict[str, Any] | None:
@@ -103,12 +122,7 @@ def export(layer: Layer, platform: str = "cloud") -> dict[str, Any]:
         condition = (rel.data.get("join") or {}).get(platform)
         if not (source and target and condition and source.binding(platform) and target.binding(platform)):
             continue
-        from_cols, to_cols = [], []
-        for term in condition.split(" AND "):
-            left, _, right = term.partition("=")
-            sides = {s.strip().split(".")[0]: s.strip().split(".")[1] for s in (left, right) if "." in s}
-            from_cols.append(sides.get("{from}"))
-            to_cols.append(sides.get("{to}"))
+        from_cols, to_cols = _join_columns(condition, layer.dialect(platform))
         relationships.append({"name": rel.id.split(".", 1)[1],
                               "from": _dataset_name(source.binding(platform)["source"]),
                               "to": _dataset_name(target.binding(platform)["source"]),

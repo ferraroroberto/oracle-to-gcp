@@ -10,7 +10,7 @@ from typing import Any
 from src import get_logger
 from src.pipeline_config import PipelineConfig
 from src.sql_models import SqlUnit
-from src.sql_processing import type_family as _type_family
+from src.sql_processing import classify_column, type_family
 from src.table_registry import (
     ColumnMapping,
     DerivedMappingState,
@@ -186,18 +186,10 @@ def _column_mapping(
 ) -> ColumnMapping:
     oracle_present = oracle_type is not None
     bigquery_present = bigquery_type is not None
-    if not oracle_present:
-        status = "extra_target"
-        notes = "Column exists only in BigQuery target"
-    elif not bigquery_present:
-        status = "missing_target"
-        notes = "Column exists in Oracle source but is missing from BigQuery target"
-    elif _types_compatible(oracle_type or "", bigquery_type or ""):
-        status = "compatible"
-        notes = ""
-    else:
-        status = "type_mismatch"
-        notes = f"Oracle {oracle_type} is not compatible with BigQuery {bigquery_type}"
+    status, notes = classify_column(
+        type_family(oracle_type) if oracle_type is not None else None,
+        type_family(bigquery_type) if bigquery_type is not None else None,
+    )
     return ColumnMapping(
         oracle_schema=mapping.oracle_schema,
         oracle_table=mapping.oracle_table,
@@ -222,10 +214,6 @@ def _table_columns(conn: sqlite3.Connection, table: str) -> dict[str, str]:
     except sqlite3.Error:
         return {}
     return {str(row["name"]).lower(): str(row["type"] or "").upper() for row in rows}
-
-
-def _types_compatible(oracle_type: str, bigquery_type: str) -> bool:
-    return _type_family(oracle_type) == _type_family(bigquery_type)
 
 
 def _now_iso() -> str:

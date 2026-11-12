@@ -11,7 +11,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from src.config import ROOT_DIR
+from src.config import ROOT_DIR, resolve_under_root
 from src.fs_write import ensure_dir
 from src.sqlite_db import transaction
 
@@ -172,8 +172,7 @@ def registry_path(path: str | Path | None = None) -> Path:
     """Resolve the registry database path."""
     if path is None:
         return DEFAULT_REGISTRY_PATH
-    resolved = Path(path)
-    return resolved if resolved.is_absolute() else ROOT_DIR / resolved
+    return resolve_under_root(path)
 
 
 def init_registry(path: str | Path | None = None) -> Path:

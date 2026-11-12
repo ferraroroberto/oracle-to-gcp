@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from src import get_logger
+from src.config import resolve_under_root
 from src.fs_write import write_text_file
 from src.lineage import render_lineage_markdown
 from src.mock_environment import (
@@ -22,7 +23,6 @@ from src.mock_environment import (
 from src.pipeline_config import (
     PipelineConfig,
     load_pipeline_config,
-    resolve_output_dir,
     with_overrides,
 )
 from src.preflight import run_table_preflight
@@ -70,7 +70,7 @@ def run(
         output_dir=str(run_dir) if run_dir is not None else None,
     )
     recorder = TraceRecorder(active_config.trace)
-    paths = bootstrap_mock_environment(resolve_output_dir(active_config.run.output_dir))
+    paths = bootstrap_mock_environment(resolve_under_root(active_config.run.output_dir))
     mapping_registry = mapping or load_mapping_registry()
     source_script = script or load_demo_script()
     run_log: list[str] = []

@@ -6,7 +6,7 @@ import json
 import re
 
 from src import config, logger
-from src.pipeline_config import load_pipeline_config, resolve_output_dir, with_overrides
+from src.pipeline_config import load_pipeline_config, with_overrides
 
 
 def test_data_dirs_are_anchored_under_root() -> None:
@@ -62,7 +62,8 @@ def test_pipeline_config_loads_json_and_applies_overrides(tmp_path) -> None:
     assert overridden.run.repair_limit == 4
     assert overridden.trace.enabled is True
     assert overridden.llm.temperature == 0.7
-    assert resolve_output_dir("data/output/custom") == config.ROOT_DIR / "data" / "output" / "custom"
+    assert config.resolve_under_root("data/output/custom") == config.ROOT_DIR / "data" / "output" / "custom"
+    assert config.resolve_under_root(config.ROOT_DIR / "x") == config.ROOT_DIR / "x"
 
 
 def test_every_config_constant_is_read_by_product_code() -> None:
@@ -79,3 +80,14 @@ def test_every_config_constant_is_read_by_product_code() -> None:
     ]
 
     assert unused == [], f"src/config.py constants no product code reads: {unused}"
+
+
+def test_only_config_anchors_relative_paths_under_the_repo_root() -> None:
+    """A second `is_absolute() else ROOT_DIR / ...` copy would drift from `resolve_under_root`."""
+    offenders = [
+        str(path.relative_to(config.ROOT_DIR))
+        for path in (config.ROOT_DIR / "src").rglob("*.py")
+        if path.name != "config.py" and re.search(r"is_absolute\(\)\s+else\s+ROOT_DIR|is_absolute\(\):\s*\n\s*\w+\s*=\s*ROOT_DIR", path.read_text(encoding="utf-8"))
+    ]
+
+    assert offenders == [], f"use config.resolve_under_root instead of re-implementing it in: {offenders}"
