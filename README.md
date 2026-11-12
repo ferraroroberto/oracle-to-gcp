@@ -351,6 +351,8 @@ Install Playwright browsers once if you want the full e2e gate:
 & .\.venv\Scripts\python.exe -m playwright install chromium
 ```
 
+The e2e testing pattern (fixtures, Streamlit boot, locators) is documented once, in the `project-scaffolding` repository's Playwright UI testing reference; this repo keeps no copy.
+
 Run unit tests:
 
 ```powershell
@@ -365,7 +367,7 @@ Run the full scaffold gate:
 
 The gate includes a docs ratchet: `README.md` stays under 40 KiB and `README.md` / `docs/**/*.md` carry no more history markers (issue references, dated or changelog headings) than `.docs-ratchet-baseline.json` records. Docs state what is true now and why; history belongs to git, PRs and issues.
 
-Beside the docs ratchet the gate runs seven more vendored, baselined ratchets: structure, instruction, doc-refs, dead-code, static (duplicates, unused names, curated bug and security patterns; needs `npx`), comment (no issue references in code comments) and conventions (`no-window`, `logging-not-print`, `no-drive-path`). Each fails only on a finding beyond its committed baseline, and an exit 3 (check could not run) fails as NOT CONFIRMED, never a pass. `CLAUDE.md` lists what each one checks.
+Beside the docs ratchet the gate runs more vendored, baselined ratchets (structure, instruction, doc-refs, dead-code, static, comment, conventions, runtime write). Each fails only on a finding beyond its committed baseline, and an exit 3 (check could not run) fails as NOT CONFIRMED, never a pass. `CLAUDE.md` is the one list of what each one checks.
 
 The last stdout line of a gate run is `GATE-RESULT: PASS` or `GATE-RESULT: FAIL`, including a failed stage, a missing `.venv` and an early terminating error; exit codes stay 0 and 1. Don't pipe the gate when its exit code matters (`... | tail` reports `tail`'s status, so a red run reads green); a caller that cannot avoid a pipe asserts on that line, and a run without it is not a pass.
 

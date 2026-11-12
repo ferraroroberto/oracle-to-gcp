@@ -39,8 +39,8 @@
                            comments than .comment-ratchet-baseline.json. Whole tree,
                            never routed; exit 3 (not confirmed) fails like any non-zero
                            exit.
-     10. conventions ratchet — no Python file with more hits of an enabled rule (no-window,
-                           logging-not-print, no-drive-path) than
+     10. conventions ratchet — no Python file with more hits of an enabled rule (the
+                           `rules` list in .fleet.toml) than
                            .conventions-ratchet-baseline.json. Whole tree, never routed;
                            exit 3 (not confirmed) fails like any non-zero exit.
      10b. runtime write ratchet — no Python file with more write targets resolving under a
