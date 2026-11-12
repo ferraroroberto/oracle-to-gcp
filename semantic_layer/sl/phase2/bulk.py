@@ -15,6 +15,7 @@ Output: ``harvest/bulk/usage.json`` + ``usage.md``. ``sl disagree --all`` reads 
 
 from __future__ import annotations
 
+import logging
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -32,10 +33,19 @@ from semantic_layer.sl.harvest import is_period_filter, parse_sql
 from semantic_layer.sl.model import load_model
 from semantic_layer.sl.platforms import get_platform
 
+log = logging.getLogger("semantic_layer.bulk")
 
-def _collect(layer: Layer, folder: Path | None, history: bool, dialect: str | None) -> list[dict[str, Any]]:
+# Bounds memory for one harvest pass; the rows past it are dropped, so hitting it is reported.
+HISTORY_ROW_CAP = 100_000
+
+
+def _collect(
+    layer: Layer, folder: Path | None, history: bool, dialect: str | None
+) -> tuple[list[dict[str, Any]], bool]:
+    """Return the queries to harvest and whether the history read hit ``HISTORY_ROW_CAP``."""
     dialect_to_platform = {layer.dialect(p): p for p in PLATFORMS}
     queries: list[dict[str, Any]] = []
+    truncated = False
     if folder:
         for path in sorted(folder.glob("*.sql")):
             suffix = path.stem.rsplit(".", 1)[-1] if "." in path.stem else None
@@ -49,18 +59,23 @@ def _collect(layer: Layer, folder: Path | None, history: bool, dialect: str | No
         platform = cfg.get("history_platform", "cloud")
         table = cfg.get("history_table", "ops.query_history")
         rows = get_platform(layer, platform).query(
-            f"SELECT query_id, user_name, team, query_text FROM {table} ORDER BY query_id", max_rows=100000)
+            f"SELECT query_id, user_name, team, query_text FROM {table} ORDER BY query_id", max_rows=HISTORY_ROW_CAP + 1)
+        truncated = len(rows) > HISTORY_ROW_CAP
+        if truncated:
+            log.warning("⚠️ %s holds more than %d queries; the usage ranking uses the first %d only",
+                        table, HISTORY_ROW_CAP, HISTORY_ROW_CAP)
+            rows = rows[:HISTORY_ROW_CAP]
         queries += [{"id": f"history:{r['query_id']}", "team": r["team"], "user": r["user_name"],
                      "platform": platform, "sql": r["query_text"]} for r in rows]
     if not queries:
         raise LayerError("Nothing to harvest — pass --folder and/or --history")
-    return queries
+    return queries, truncated
 
 
 def run(layer: Layer, folder: Path | None = None, history: bool = False, dialect: str | None = None) -> dict[str, Any]:
     catalog = catalog_mod.load(layer)
     model = load_model(layer)
-    queries = _collect(layer, folder, history, dialect)
+    queries, truncated = _collect(layer, folder, history, dialect)
 
     def cloud_name(platform: str, table: str) -> str:
         return catalog_mod.norm(table if platform == "cloud" else (catalog.other_side("legacy", table) or table))
@@ -130,7 +145,7 @@ def run(layer: Layer, folder: Path | None = None, history: bool = False, dialect
                     for b in d.data.get("bindings", []) or []}
     catalog_tables = sorted({cloud_name(p, t) for p, t in catalog.all_tables()})
     report = {
-        "queries": len(queries), "parsed": len(parsed), "failures": failures,
+        "queries": len(queries), "parsed": len(parsed), "failures": failures, "history_truncated": truncated,
         "tables": [{"table": t, "queries": n, "teams": sorted(table_teams[t]), "defined": t in bound_tables}
                    for t, n in table_use.most_common()],
         "unused_catalog_tables": [t for t in catalog_tables if t not in used_tables],
@@ -191,4 +206,6 @@ def markdown(report: dict[str, Any]) -> str:
         lines.append(f"\n**Filters on {table}:** " + "; ".join(f"`{t['term']}` ×{t['queries']}" for t in terms[:8]))
     if report["failures"]:
         lines += ["", f"⚠️ {len(report['failures'])} queries did not parse"]
+    if report["history_truncated"]:
+        lines += ["", f"⚠️ Query history truncated at {HISTORY_ROW_CAP:,} rows — the ranking is built on partial data"]
     return "\n".join(lines)

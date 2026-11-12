@@ -6,6 +6,7 @@ import json
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
 from semantic_layer.sl import checks, disagree
@@ -36,6 +37,14 @@ def test_bulk_ranks_usage_and_finds_undeclared_joins(layer: Layer) -> None:
     assert "analytics.orders.store_id = analytics.stores.store_id" in undeclared
     assert "dwh.store_targets" in report["unused_catalog_tables"]
     assert (layer.root / "harvest" / "bulk" / "usage.md").exists()
+
+
+def test_bulk_reports_a_history_read_that_hits_the_row_cap(layer: Layer, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert bulk.run(layer, history=True)["history_truncated"] is False
+    monkeypatch.setattr(bulk, "HISTORY_ROW_CAP", 10)
+    report = bulk.run(layer, history=True)
+    assert report["queries"] == 10 and report["history_truncated"] is True
+    assert "truncated at 10 rows" in (layer.root / "harvest" / "bulk" / "usage.md").read_text(encoding="utf-8")
 
 
 def test_full_disagreement_compares_at_one_period_and_skips_parameters(layer: Layer) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from src import preflight
 from src.mock_environment import bootstrap_mock_environment
 from src.pipeline_config import (
     config_to_dict,
@@ -85,3 +86,7 @@ def test_mock_table_probe_uses_limit_one(tmp_path) -> None:
     paths = bootstrap_mock_environment(tmp_path)
     with connect_sqlite(paths["oracle_db"]) as conn:
         assert conn.execute("SELECT * FROM sales_orders LIMIT 1").fetchone() is not None
+
+
+def test_preflight_logs_under_the_configured_app_tree() -> None:
+    assert preflight.log.name.startswith("app.")
