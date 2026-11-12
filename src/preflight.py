@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import logging
 import sqlite3
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from src import get_logger
 from src.pipeline_config import PipelineConfig
 from src.sql_models import SqlUnit
 from src.sql_processing import type_family as _type_family
@@ -24,7 +24,7 @@ from src.table_registry import (
     update_reachability,
 )
 
-log = logging.getLogger(__name__)
+log = get_logger("preflight")
 
 
 @dataclass(slots=True)

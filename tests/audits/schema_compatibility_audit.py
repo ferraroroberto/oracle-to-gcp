@@ -13,13 +13,13 @@ import json
 import logging
 import os
 import re
-import sqlite3
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 from src import bigquery_io
 from src.sql_processing import type_family
+from src.sqlite_db import transaction
 from tests.audits._common import configure_logging as _configure_logging
 from tests.audits._common import load_json as _load_json
 
@@ -138,7 +138,7 @@ class SqliteMetadataAdapter:
         """Return SQLite ``PRAGMA table_info`` rows."""
         table = pair.oracle_table if side == "oracle" else pair.bigquery_table
         log.info("Fetching SQLite metadata for %s table %s", side, table)
-        with sqlite3.connect(self.db_path) as conn:
+        with transaction(self.db_path) as conn:
             rows = conn.execute(f"PRAGMA table_info({_quote_sqlite_identifier(table)})").fetchall()
         return [
             ColumnMetadata(
@@ -164,7 +164,7 @@ class SqliteMetadataAdapter:
             return {}
         column_sql = ", ".join(_quote_sqlite_identifier(column.name) for column in columns)
         query = f"SELECT {column_sql} FROM {_quote_sqlite_identifier(table)} LIMIT ?"
-        with sqlite3.connect(self.db_path) as conn:
+        with transaction(self.db_path) as conn:
             rows = conn.execute(query, (limit,)).fetchall()
         return _summarize_samples(columns, rows)
 

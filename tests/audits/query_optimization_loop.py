@@ -18,13 +18,13 @@ from __future__ import annotations
 import argparse
 import logging
 import re
-import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 from src import bigquery_io
 from src.llm_client import LocalHubClient, _strip_sql_fence
+from src.sqlite_db import transaction
 from src.validation import compare_fingerprints
 from tests.audits._common import configure_logging as _configure_logging
 from tests.audits._common import load_json as _load_json
@@ -115,12 +115,8 @@ class SqliteQueryExecutor:
 
     def execute(self, sql: str) -> list[dict[str, Any]]:
         """Return result rows from the configured SQLite database."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(sql)
-            rows = [dict(row) for row in cursor.fetchall()]
-            conn.commit()
-            return rows
+        with transaction(self.db_path) as conn:
+            return [dict(row) for row in conn.execute(sql).fetchall()]
 
 
 def build_executor(config: dict[str, Any]) -> QueryExecutor:
