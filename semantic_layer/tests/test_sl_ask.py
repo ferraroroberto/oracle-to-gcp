@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
 from semantic_layer.sl import ask
-from semantic_layer.sl.common import Layer
+from semantic_layer.sl.common import PACKAGE_ROOT, Layer
 from semantic_layer.sl.model import load_model
 
 GOLD = {"entity": "customer.active_buyer", "metric": "metric.customer_count",
@@ -107,3 +109,37 @@ def test_legacy_platform_answer(layer: Layer) -> None:
     answer = ask.run(layer, dict(GOLD, dimensions=["dimension.home_store:region"]), platform="legacy")
     assert answer["ok"], answer["errors"]
     assert answer["platform"] == "legacy" and answer["total"] == 446
+
+
+def test_non_additive_over_time_still_sums_across_many_to_one_groups(layer: Layer) -> None:
+    assert ask.total_not_summable(load_model(layer), GOLD) is None
+
+
+def test_non_additive_metric_grouped_gets_no_total_and_is_not_comparable(layer: Layer) -> None:
+    model = load_model(layer)
+    model.get(GOLD["metric"]).data["additivity"] = "non_additive"
+    assert ask.total_not_summable(model, GOLD) is not None
+    assert ask.total_not_summable(model, dict(GOLD, dimensions=[])) is None  # one row: nothing to sum
+    result = ask.reconcile(model, GOLD, 446.0, False)
+    assert result["status"] == "not_comparable" and "non_additive" in result["detail"]
+
+
+def test_fan_out_join_blocks_the_sum_of_a_snapshot_count(layer: Layer) -> None:
+    model = load_model(layer)
+    next(r for r in model.relationships_from(GOLD["entity"])
+         if r.data["to"] == "dimension.join_month").data["cardinality"] = "one_to_many"
+    result = ask.reconcile(model, GOLD, 446.0, False)
+    assert result["status"] == "not_comparable" and "double-count" in result["detail"]
+
+
+def test_every_additivity_value_has_a_pinned_summing_rule(layer: Layer) -> None:
+    """A new `additivity` enum value must be given a rule here, or the schema field is a promise nothing keeps."""
+    allowed = json.loads((PACKAGE_ROOT / "schema" / "metric.schema.json").read_text(encoding="utf-8"))
+    values = allowed["properties"]["additivity"]["enum"]
+    rules = {"additive": False, "non_additive": True, "non_additive_over_time": False}
+    assert set(values) == set(rules), "additivity enum changed: pin the grouped-summing behaviour in this test"
+    model = load_model(layer)
+    for value, blocked in rules.items():
+        model.get(GOLD["metric"]).data["additivity"] = value
+        reason = ask.total_not_summable(model, GOLD)
+        assert (reason is not None) is blocked, value

@@ -86,6 +86,7 @@ The committed state *is* the result of steps 1–8: the definitions under `domai
 - `entities[]`: `id`, `from_alias` (the CTE or table alias in the query), `key`, `time_column`, `name`, `synonyms`, `description`, `grain`, `not_to_be_confused_with`, `caveats`, `ai_context`, `anchors`
 - `dimensions[]`: `id`, `from_join` (the joined alias), and either `levels: {level: COLUMN}` or `expression_from_output: <output column>`; `reuse: true` for an existing dimension, which then only gets a new relationship
 - `metrics[]`: `id`, `expression` (with `{entity.key}`), `applies_to`, `additivity`
+  - `additivity` decides whether `ask run` sums grouped rows into a `total`: `additive` always; `non_additive` never when grouped (no total, reconciliation `not_comparable`); `non_additive_over_time` only across many-to-one dimensions, within the single pinned period
 - `anchors[]`: `id`, `published_in`, `measures`, `values[{period, value}]`, `tolerance_pct`
 - `template`: `id`, `question_pattern`, `entity`, `metric`, `dimensions`, `uses`, `reconciles_with`, `parameters.period.replaces` (the literal date to parameterise)
 - `golden_questions[]` (merged into `evals/`), `open_questions[]`

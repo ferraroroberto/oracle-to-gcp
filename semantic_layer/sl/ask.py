@@ -414,6 +414,30 @@ def _metric_column(rows: list[dict[str, Any]], sql: str, dialect: str, preferred
     return None
 
 
+def total_not_summable(model: Model, spec: dict[str, Any]) -> str | None:
+    """Why summing the grouped rows would be meaningless, or None when the sum is a valid total.
+
+    `additivity` on the metric decides: `additive` always sums; `non_additive` never sums once the answer
+    is grouped; `non_additive_over_time` sums across groups only when every group is a one-row-per-entity
+    (many_to_one / one_to_one) join, since the snapshot period is already pinned by compose and lint.
+    """
+    dimensions = spec.get("dimensions") or []
+    metric = model.find(spec["metric"])
+    additivity = (metric.data.get("additivity") if metric else None) or "additive"
+    if additivity == "additive" or not dimensions:
+        return None
+    if additivity == "non_additive":
+        return f"{metric.id} is non_additive: grouped rows cannot be summed into a total"
+    for ref in dimensions:
+        dimension_id = strip_ref(ref)
+        relationship = next((r for r in model.relationships_from(spec["entity"])
+                             if r.data.get("to") == dimension_id), None)
+        if relationship is None or relationship.data.get("cardinality") not in ("many_to_one", "one_to_one"):
+            return (f"{metric.id} is {additivity} and {dimension_id} can place one entity in several groups: "
+                    "summing the rows would double-count")
+    return None
+
+
 def reconcile(model: Model, spec: dict[str, Any], total: float | None, truncated: bool) -> dict[str, Any]:
     """Compare the answer's total with a published anchor, when that comparison is meaningful."""
     anchors = [a for a in model.of_kind("anchor")
@@ -424,6 +448,9 @@ def reconcile(model: Model, spec: dict[str, Any], total: float | None, truncated
     anchor = anchors[0]
     if spec.get("filters"):
         return {"status": "not_comparable", "anchor": anchor.id, "detail": "the answer is a filtered subset"}
+    unsummable = total_not_summable(model, spec)
+    if unsummable:
+        return {"status": "not_comparable", "anchor": anchor.id, "detail": unsummable}
     period = spec.get("period")
     value = next((v["value"] for v in anchor.data.get("values", []) if str(v["period"]) == str(period)), None)
     if value is None:
@@ -481,7 +508,10 @@ def run(layer: Layer, spec: dict[str, Any], platform: str | None = None, execute
             answer["rows"] = rows
             answer["truncated"] = truncated
             column = _metric_column(rows, sql, dialect, spec["metric"].split(".", 1)[1])
-            if column:
+            unsummable = total_not_summable(model, spec)
+            if unsummable:
+                answer["warnings"].append(f"no total reported: {unsummable}")
+            elif column:
                 total = sum(float(r[column] or 0) for r in rows)
                 answer["total"] = int(total) if float(total).is_integer() else total
         elif execute and not allowed:
