@@ -112,8 +112,8 @@ the one writer of caller-chosen files and folders: ensure_dir, write_text_file, 
   GCSIO -->|optional, ADC| GCS[("Google Cloud Storage")]
   BQIO -->|optional, real creds| BQPROD
 
-  subgraph semantic["semantic_layer/ — team semantic layer spike (self-contained, no imports from src/)"]
-    SLCLI["sl/cli.py — python -m semantic_layer"]
+  subgraph semantic["src/semantic_layer/ — team semantic layer spike (self-contained, no imports from sibling src/ modules)"]
+    SLCLI["sl/cli.py — python -m src.semantic_layer"]
     SLMODEL["sl/model.py + sl/validate.py\nYAML definitions → resolved model; CI rules"]
     SLHARVEST["sl/harvest.py\nsqlglot parse · xref · aggregate probes · interview questions · drafts"]
     SLASK["sl/ask.py\nresolve · template-first · compose · lint · dry run · reconcile · provenance"]
@@ -121,7 +121,7 @@ the one writer of caller-chosen files and folders: ensure_dir, write_text_file, 
     SLP2["sl/phase2/ (opt-in)\nbulk · checks_full · navigator · export_osi"]
     SLPLAT["sl/platforms.py\nMockDuckDB | BigQuery | Oracle adapters"]
     SLCONTENT[("domains/ · catalog/ · harvest/ · evals/ · build/")]
-    SLMOCK[("semantic_layer/.mock/\nlegacy.duckdb · cloud.duckdb")]
+    SLMOCK[("data/semantic_layer/.mock/\nlegacy.duckdb · cloud.duckdb")]
   end
   SKILLS[".github/skills/semantic-*\nask · find · harvest · contribute · steward"] --> SLCLI
   SLCLI --> SLMODEL
@@ -143,7 +143,7 @@ the one writer of caller-chosen files and folders: ensure_dir, write_text_file, 
     UNIT["tests/test_oracle_to_bigquery.py\ntests/test_schema_compatibility_audit.py\ntests/test_query_cost_audit.py\ntests/test_query_optimization_loop.py"]
     E2E["tests/e2e/test_smoke.py\nStreamlit boot smoke (Playwright)"]
   end
-  SLTESTS["semantic_layer/tests/\nwalkthrough + per-module + phase2"]
+  SLTESTS["tests/semantic_layer/\nwalkthrough + per-module + phase2"]
   GATE --> UNIT
   GATE --> E2E
   GATE --> SLTESTS

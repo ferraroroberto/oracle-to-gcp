@@ -1,6 +1,6 @@
 # Team Semantic Layer + Data Agent — Design and Phased Plan
 
-_Durable design record for the `semantic_layer/` reference implementation in this repository. Section 14 maps every part of this plan to the code; `semantic_layer/README.md` is the operating manual and `semantic_layer/PORTING.md` the bootstrap guide for a real repository._
+_Durable design record for the `src/semantic_layer/` reference implementation in this repository. Section 14 maps every part of this plan to the code; `src/semantic_layer/README.md` is the operating manual and `docs/semantic-layer-porting.md` the bootstrap guide for a real repository._
 
 > **For the agent reading this:** this is a self-contained design and implementation plan, written outside your environment. Merge it with what already exists in this repository (for example an existing repo of table and column metadata). Where the plan assumes something about the existing setup, **check first and adapt**. Every product capability marked *(verify)* is unconfirmed until tested here. Components are tagged **[P1]** (build now) or **[P2]** (designed now, built later). Phase 1 must still capture every field Phase 2 will read (section 3, principle 6).
 
@@ -348,7 +348,7 @@ model.json   index              docs/*.md               navigator.html
 ```
 
 - **`build/model.json`** [P1]: the whole layer with references resolved both ways (uses / used by), owner, status, health, catalog facts.
-- **the `sl` CLI** (`python -m semantic_layer`) [P1]: one CLI over the layer for people and agents alike (`sl search`, `sl show <id>`, `sl owners --team <t>`, `sl table <name>`, `sl lineage <id>`, `sl health --overdue`). Skills call it instead of walking files.
+- **the `sl` CLI** (`python -m src.semantic_layer`) [P1]: one CLI over the layer for people and agents alike (`sl search`, `sl show <id>`, `sl owners --team <t>`, `sl table <name>`, `sl lineage <id>`, `sl health --overdue`). Skills call it instead of walking files.
 - **Generated markdown docs** [P1]: one page per team, per definition and per table, plus a Mermaid relationship diagram per domain, which GitHub renders natively. This needs no infrastructure and is enough for Phase 1.
 - **`navigator.html`** [P2]: one self-contained static file with `model.json` embedded and client-side search, with views for teams, concepts, tables, relationships, and health and coverage. It needs no server or database. Host it as a CI artifact, on private GitHub Pages *(verify)*, or behind the organisation's login.
 - **MCP server** [P2, only if needed]: wraps the same `sl` functions for clients that cannot run a CLI.
@@ -446,7 +446,7 @@ Each module below reads data that Phase 1 already captures, so any of them can s
 
 ## 14. Reference implementation in this repository
 
-`semantic_layer/` implements Phase 1 fully and the Phase 2 modules marked below, on mock data (a fictitious retail domain in two DuckDB files standing in for the legacy and cloud warehouses). Command names are `python -m semantic_layer <command>`, shortened to `sl` here.
+`src/semantic_layer/` implements Phase 1 fully and the Phase 2 modules marked below, on mock data (a fictitious retail domain in two DuckDB files standing in for the legacy and cloud warehouses). Command names are `python -m src.semantic_layer <command>`, shortened to `sl` here.
 
 | Plan section | Implementation | Phase |
 |---|---|---|

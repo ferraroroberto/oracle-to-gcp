@@ -10,8 +10,8 @@ First read `.github/skills/_shared/semantic-common.md`.
 ## 1. Run
 
 ```
-python -m semantic_layer checks run --json            # Phase 1: drift, dates, stale pins, catalog refresh
-python -m semantic_layer checks run --full --json     # only when phase2.full_checks is enabled in config.json
+python -m src.semantic_layer checks run --json            # Phase 1: drift, dates, stale pins, catalog refresh
+python -m src.semantic_layer checks run --full --json     # only when phase2.full_checks is enabled in config.json
 ```
 
 Exit code 0 = healthy, 1 = something failing, 3 = some checks could not run (**unknown**, not healthy). Results go to `build/health.json` and to one issue body per team under `build/issues/`.

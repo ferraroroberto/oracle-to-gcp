@@ -9,11 +9,11 @@ First read `.github/skills/_shared/semantic-common.md`. If the user has a workin
 
 ## Add a definition
 
-1. **Check it isn't there already:** `python -m semantic_layer search "<words>"`. If something close exists, decide with the user: same meaning → change that definition; different meaning → a new id plus `not_to_be_confused_with` links in **both** directions.
-2. **Interview** over the fields for the kind (`semantic_layer/schema/<kind>.schema.json` is authoritative): name, one-paragraph description, synonyms, grain, owner team and steward. Then bindings: find the table with `python -m semantic_layer table <name>` and propose source, key, time column and filter **in each platform's dialect**, using `{t}` as the table alias. Also cover the known confusions, caveats, and at least one quality check (`nullValues` on the key, `duplicateValues` on the grain).
-3. **Write** `semantic_layer/domains/<team>/<kind-folder>/<id>.yaml` with `status: draft`, `version: 1`, `provenance: {method: contribute, from: conversation, confirmed_by: <person>, confirmed_on: <date>}`.
-4. `python -m semantic_layer validate`, then `python -m semantic_layer build`. Fix everything validate reports.
-5. Add a golden question to `semantic_layer/evals/golden_questions.yaml` that the new concept should answer. Run `python -m semantic_layer eval`.
+1. **Check it isn't there already:** `python -m src.semantic_layer search "<words>"`. If something close exists, decide with the user: same meaning → change that definition; different meaning → a new id plus `not_to_be_confused_with` links in **both** directions.
+2. **Interview** over the fields for the kind (`data/semantic_layer/schema/<kind>.schema.json` is authoritative): name, one-paragraph description, synonyms, grain, owner team and steward. Then bindings: find the table with `python -m src.semantic_layer table <name>` and propose source, key, time column and filter **in each platform's dialect**, using `{t}` as the table alias. Also cover the known confusions, caveats, and at least one quality check (`nullValues` on the key, `duplicateValues` on the grain).
+3. **Write** `data/semantic_layer/domains/<team>/<kind-folder>/<id>.yaml` with `status: draft`, `version: 1`, `provenance: {method: contribute, from: conversation, confirmed_by: <person>, confirmed_on: <date>}`.
+4. `python -m src.semantic_layer validate`, then `python -m src.semantic_layer build`. Fix everything validate reports.
+5. Add a golden question to `data/semantic_layer/evals/golden_questions.yaml` that the new concept should answer. Run `python -m src.semantic_layer eval`.
 6. Open a branch and a **draft PR**. The owning team (CODEOWNERS) reviews and certifies.
 
 ## Change a definition

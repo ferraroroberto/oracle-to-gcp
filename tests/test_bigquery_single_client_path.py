@@ -19,7 +19,8 @@ from tests.audits.schema_compatibility_audit import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BIGQUERY_IO = REPO_ROOT / "src" / "bigquery_io.py"
-# semantic_layer/ is self-contained and must not import from src/, so it is out of scope here.
+# src/semantic_layer/ is self-contained and must not import src/bigquery_io.py, so it keeps its own platform adapter and is out of scope here.
+SELF_CONTAINED = REPO_ROOT / "src" / "semantic_layer"
 SCANNED_DIRS = ("src", "app", "tests/audits")
 DIRECT_CLIENT_USE = re.compile(r"google\.cloud\s+import\s+bigquery|bigquery\.Client\(")
 
@@ -29,7 +30,7 @@ def test_only_bigquery_io_touches_the_bigquery_client_library() -> None:
         f"{path.relative_to(REPO_ROOT).as_posix()}:{number}"
         for directory in SCANNED_DIRS
         for path in sorted((REPO_ROOT / directory).rglob("*.py"))
-        if path != BIGQUERY_IO
+        if path != BIGQUERY_IO and SELF_CONTAINED not in path.parents
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
         if DIRECT_CLIENT_USE.search(line)
     ]

@@ -18,8 +18,7 @@ depends_on   = ["local-llm-hub"]
 # scripts/structure_ratchet.py; ids and presets: project-scaffolding
 # docs/structure-ratchet.md.
 shape       = "streamlit"
-# semantic_layer: a self-contained spike with its own `python -m semantic_layer` package that must be liftable out whole, so it stays a second root.
-extra_roots = ["semantic_layer"]
+extra_roots = []
 
 # Vendored byte-for-byte from project-scaffolding. sha = the source repo commit
 # the copy was taken from; /propagate-vendored hash-verifies + bumps.
@@ -168,8 +167,7 @@ why    = "src/sqlite_db.py is the one SQLite opener (row factory, transaction th
 [runtime_write_ratchet]
 enabled      = true
 baseline     = ".runtime-write-ratchet-baseline.json"
-# The semantic-layer toolkit is code too (the extra root kept beside src/), not only src, app and scripts.
-code_folders = ["src", "app", "scripts", "semantic_layer"]
+code_folders = ["src", "app", "scripts"]
 
 # [e2e] -- diff-proportionate e2e routing (project-scaffolding docs/e2e-routing.md).
 # scripts/classify_e2e.py loads this table and maps the changed-file set to a
@@ -177,7 +175,7 @@ code_folders = ["src", "app", "scripts", "semantic_layer"]
 # scripts/classify_e2e.py call in scripts/verify-before-ship.ps1), so today
 # this table only drives this skill's own routed slice, not the gate's time.
 # Conservative starter: only plainly inert paths (docs, the standalone
-# tests/audits/ + other non-e2e tests, the self-contained semantic_layer/
+# tests/audits/ + other non-e2e tests, the self-contained src/semantic_layer/
 # spike) are "none". app/ imports from src/ and config/ (incl. the demo data
 # in data/examples/ the UI loads), so those stay unclassified and fail safe to "full".
 [e2e]
@@ -203,7 +201,7 @@ prefix     = "tests/"
 extensions = ["py"]
 [[e2e.rule]]
 tier   = "none"
-prefix = "semantic_layer/"
+prefix = "src/semantic_layer/"
 [[e2e.rule]]
 tier   = "none"
 prefix = "docs/"

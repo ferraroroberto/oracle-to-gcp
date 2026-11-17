@@ -3,7 +3,7 @@ streamlit>=1.56.0
 pandas>=2.2.0
 openpyxl>=3.1.0
 
-# Semantic layer spike (semantic_layer/) — mock warehouses, SQL parsing, YAML
+# Semantic layer spike (src/semantic_layer/) — mock warehouses, SQL parsing, YAML
 # definitions and their JSON-Schema validation.
 duckdb>=1.4.0
 sqlglot>=30.0.0

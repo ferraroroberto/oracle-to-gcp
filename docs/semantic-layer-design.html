@@ -27,7 +27,7 @@ th { font-weight:600; color:var(--muted); font-size:12px; text-transform:upperca
 </head>
 <body><main>
 <h1>Team Semantic Layer + Data Agent — Design and Phased Plan</h1>
-<p><em>Durable design record for the <code>semantic_layer/</code> reference implementation in this repository. Section 14 maps every part of this plan to the code; <code>semantic_layer/README.md</code> is the operating manual and <code>semantic_layer/PORTING.md</code> the bootstrap guide for a real repository.</em></p>
+<p><em>Durable design record for the <code>src/semantic_layer/</code> reference implementation in this repository. Section 14 maps every part of this plan to the code; <code>src/semantic_layer/README.md</code> is the operating manual and <code>docs/semantic-layer-porting.md</code> the bootstrap guide for a real repository.</em></p>
 <blockquote>
 <p><strong>For the agent reading this:</strong> this is a self-contained design and implementation plan, written outside your environment. Merge it with what already exists in this repository (for example an existing repo of table and column metadata). Where the plan assumes something about the existing setup, <strong>check first and adapt</strong>. Every product capability marked <em>(verify)</em> is unconfirmed until tested here. Components are tagged <strong>[P1]</strong> (build now) or <strong>[P2]</strong> (designed now, built later). Phase 1 must still capture every field Phase 2 will read (section 3, principle 6).</p>
 </blockquote>
@@ -391,7 +391,7 @@ model.json   index              docs/*.md               navigator.html
 </code></pre>
 <ul>
 <li><strong><code>build/model.json</code></strong> [P1]: the whole layer with references resolved both ways (uses / used by), owner, status, health, catalog facts.</li>
-<li><strong>the <code>sl</code> CLI</strong> (<code>python -m semantic_layer</code>) [P1]: one CLI over the layer for people and agents alike (<code>sl search</code>, <code>sl show &lt;id&gt;</code>, <code>sl owners --team &lt;t&gt;</code>, <code>sl table &lt;name&gt;</code>, <code>sl lineage &lt;id&gt;</code>, <code>sl health --overdue</code>). Skills call it instead of walking files.</li>
+<li><strong>the <code>sl</code> CLI</strong> (<code>python -m src.semantic_layer</code>) [P1]: one CLI over the layer for people and agents alike (<code>sl search</code>, <code>sl show &lt;id&gt;</code>, <code>sl owners --team &lt;t&gt;</code>, <code>sl table &lt;name&gt;</code>, <code>sl lineage &lt;id&gt;</code>, <code>sl health --overdue</code>). Skills call it instead of walking files.</li>
 <li><strong>Generated markdown docs</strong> [P1]: one page per team, per definition and per table, plus a Mermaid relationship diagram per domain, which GitHub renders natively. This needs no infrastructure and is enough for Phase 1.</li>
 <li><strong><code>navigator.html</code></strong> [P2]: one self-contained static file with <code>model.json</code> embedded and client-side search, with views for teams, concepts, tables, relationships, and health and coverage. It needs no server or database. Host it as a CI artifact, on private GitHub Pages <em>(verify)</em>, or behind the organisation's login.</li>
 <li><strong>MCP server</strong> [P2, only if needed]: wraps the same <code>sl</code> functions for clients that cannot run a CLI.</li>
@@ -534,7 +534,7 @@ model.json   index              docs/*.md               navigator.html
 <li><strong>Migration.</strong> Two bindings per definition while tables move; reconciliation catches divergence; mark the legacy binding <code>deprecated</code> after sign-off rather than deleting it.</li>
 </ul>
 <h2>14. Reference implementation in this repository</h2>
-<p><code>semantic_layer/</code> implements Phase 1 fully and the Phase 2 modules marked below, on mock data (a fictitious retail domain in two DuckDB files standing in for the legacy and cloud warehouses). Command names are <code>python -m semantic_layer &lt;command&gt;</code>, shortened to <code>sl</code> here.</p>
+<p><code>src/semantic_layer/</code> implements Phase 1 fully and the Phase 2 modules marked below, on mock data (a fictitious retail domain in two DuckDB files standing in for the legacy and cloud warehouses). Command names are <code>python -m src.semantic_layer &lt;command&gt;</code>, shortened to <code>sl</code> here.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>

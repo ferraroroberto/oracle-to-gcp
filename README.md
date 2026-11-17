@@ -261,18 +261,18 @@ Set `llm.enabled` to `false` to leave every query at its baseline (zero iteratio
 
 ## Team Semantic Layer (research spike)
 
-`semantic_layer/` is a self-contained, mock-data reference implementation of a **git-hosted, team-owned semantic layer** plus agent skills. Business definitions (what a "customer" is, which table and filter, who owns it, which checks guard it) are YAML files owned per team. A deterministic toolkit (`python -m semantic_layer …`, "`sl`") validates them, learns new ones from working SQL by interviewing its author, answers questions with cited, validated SQL that reconciles against published figures, and runs the health checks. Five skills in `.github/skills/semantic-*` (GitHub Copilot / any `SKILL.md` agent) drive it.
+The semantic layer (`src/semantic_layer/`, `data/semantic_layer/`, `tests/semantic_layer/`) is a self-contained, mock-data reference implementation of a **git-hosted, team-owned semantic layer** plus agent skills. Business definitions (what a "customer" is, which table and filter, who owns it, which checks guard it) are YAML files owned per team. A deterministic toolkit (`python -m src.semantic_layer …`, "`sl`") validates them, learns new ones from working SQL by interviewing its author, answers questions with cited, validated SQL that reconciles against published figures, and runs the health checks. Five skills in `.github/skills/semantic-*` (GitHub Copilot / any `SKILL.md` agent) drive it.
 
 It runs on two DuckDB mock warehouses (legacy Oracle-shaped, cloud BigQuery-shaped) with a fictitious retail domain, and it imports nothing from `src/`, so it can be lifted out whole.
 
 ```powershell
-& .\.venv\Scripts\python.exe -m semantic_layer mock seed
-& .\.venv\Scripts\python.exe -m semantic_layer ask resolve "how many customers per store"
-& .\.venv\Scripts\python.exe -m semantic_layer validate
+& .\.venv\Scripts\python.exe -m src.semantic_layer mock seed
+& .\.venv\Scripts\python.exe -m src.semantic_layer ask resolve "how many customers per store"
+& .\.venv\Scripts\python.exe -m src.semantic_layer validate
 ```
 
-- Operating manual, walkthrough and command reference: [`semantic_layer/README.md`](semantic_layer/README.md)
-- Bootstrapping it in a real repository: [`semantic_layer/PORTING.md`](semantic_layer/PORTING.md)
+- Operating manual, walkthrough and command reference: [`src/semantic_layer/README.md`](src/semantic_layer/README.md)
+- Bootstrapping it in a real repository: [`docs/semantic-layer-porting.md`](docs/semantic-layer-porting.md)
 - Design record and phased plan: [`docs/semantic-layer-design.md`](docs/semantic-layer-design.md) (also as a self-contained page, [`docs/semantic-layer-design.html`](docs/semantic-layer-design.html))
 
 ## Shared Fleet-Wide GCP IO Helpers
@@ -323,12 +323,9 @@ data/
   examples/
     demo_oracle_script.sql       Fictitious Oracle script
     mapping_registry.json        Source-to-target table mapping
-semantic_layer/                  Team semantic layer spike (self-contained; see its README)
-  sl/                            The `sl` toolkit (python -m semantic_layer)
-  domains/ schema/ catalog/      Curated definitions, JSON Schemas, generated catalog
-  harvest/ queries/ evals/       Harvest sessions, harvested queries, golden questions
-  build/                         Generated index, model.json, docs
-  tests/                         Toolkit tests
+src/semantic_layer/              Team semantic layer spike toolkit (see its README)
+  sl/                            The `sl` toolkit (python -m src.semantic_layer)
+data/semantic_layer/             Layer root: definitions, schemas, catalog, harvest sessions, evals, generated build/
 .github/skills/semantic-*/       Agent skills: ask, find, harvest, contribute, steward
 .github/workflows/semantic-layer.yml  Semantic layer CI gate
 tests/

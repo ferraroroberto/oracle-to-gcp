@@ -45,9 +45,9 @@ def test_real_rules_route_representative_paths() -> None:
     assert tier("config/audits/schema_audit_config.json") == "skip"
     assert tier("tests/test_bigquery_io.py") == "skip"
 
-    # The self-contained semantic_layer/ spike (never imported by app/) and
+    # The self-contained semantic layer spike (never imported by app/) and
     # docs/markdown -> skip.
-    assert tier("semantic_layer/sl/cli.py") == "skip"
+    assert tier("src/semantic_layer/sl/cli.py") == "skip"
     assert tier("docs/architecture.mmd") == "skip"
     assert tier("README.md") == "skip"
 

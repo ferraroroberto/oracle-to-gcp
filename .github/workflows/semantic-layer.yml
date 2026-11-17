@@ -6,13 +6,17 @@ name: semantic-layer
 on:
   pull_request:
     paths:
-      - "semantic_layer/**"
+      - "src/semantic_layer/**"
+      - "data/semantic_layer/**"
+      - "tests/semantic_layer/**"
       - ".github/skills/semantic-*/**"
       - ".github/workflows/semantic-layer.yml"
   push:
     branches: [main]
     paths:
-      - "semantic_layer/**"
+      - "src/semantic_layer/**"
+      - "data/semantic_layer/**"
+      - "tests/semantic_layer/**"
 
 jobs:
   gate:
@@ -25,10 +29,10 @@ jobs:
       - name: Install toolkit dependencies
         run: pip install duckdb sqlglot PyYAML jsonschema pytest
       - name: Validate definitions
-        run: python -m semantic_layer validate
+        run: python -m src.semantic_layer validate
       - name: Generated build/ is up to date
-        run: python -m semantic_layer build --check
+        run: python -m src.semantic_layer build --check
       - name: Golden-question evals
-        run: python -m semantic_layer eval
+        run: python -m src.semantic_layer eval
       - name: Toolkit tests
-        run: python -m pytest semantic_layer/tests -q
+        run: python -m pytest tests/semantic_layer -q

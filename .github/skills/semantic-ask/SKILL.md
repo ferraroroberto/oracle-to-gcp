@@ -14,7 +14,7 @@ Pull out the business terms the user used: the population ("active customers"), 
 ## 2. Resolve, and ask before building anything
 
 ```
-python -m semantic_layer ask resolve "<the terms or the whole question>" --json
+python -m src.semantic_layer ask resolve "<the terms or the whole question>" --json
 ```
 
 - `needs_clarification: true` → ask **all** open points in **one** message, as multiple choice, using each option's `difference`, `owner` and `steward`. Example: *"By 'customer' do you mean (a) active customers — bought in the last 12 months, management pack; (b) any registered account; (c) marketing's campaign-reachable customers?"*
@@ -37,7 +37,7 @@ Write the spec as JSON and run it:
 ```
 
 ```
-python -m semantic_layer ask run spec.json --json        # add --no-execute for "just give me the SQL"
+python -m src.semantic_layer ask run spec.json --json        # add --no-execute for "just give me the SQL"
 ```
 
 The command chooses a certified template when one matches. Otherwise it composes SQL from certified fragments, then lints it, dry-runs it, executes aggregates (if allowed), reconciles against published anchors and builds the provenance card. Don't edit the SQL it returns. If something is wrong, fix the spec or the definitions.

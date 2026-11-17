@@ -11,10 +11,10 @@ The fastest way to fill the layer is to start from SQL people already trust. The
 
 ## 1. Analyse (deterministic)
 
-Save the query under `semantic_layer/queries/<team>_<topic>.<dialect>.sql`, then:
+Save the query under `data/semantic_layer/queries/<team>_<topic>.<dialect>.sql`, then:
 
 ```
-python -m semantic_layer harvest analyse semantic_layer/queries/<file> --platform <legacy|cloud> --session <YYYY-MM-DD-team> --json
+python -m src.semantic_layer harvest analyse data/semantic_layer/queries/<file> --platform <legacy|cloud> --session <YYYY-MM-DD-team> --json
 ```
 
 This writes `harvest/sessions/<session>/` (`parse.json`, `xref.json`, `probes.json`, `questions.json`). Read `xref.json` first:
@@ -32,16 +32,16 @@ Keep a readable transcript as `interview.md` in the session folder.
 
 ## 3. Record the answers
 
-Write `harvest/sessions/<session>/answers.yaml`. The shape is documented in `semantic_layer/README.md` ("Harvest answers file"), and the two committed sessions are worked examples. Use distinct ids for distinct meanings, and fill `not_to_be_confused_with` wherever a word is shared. Put anything unresolved in `open_questions`.
+Write `harvest/sessions/<session>/answers.yaml`. The shape is documented in `src/semantic_layer/README.md` ("Harvest answers file"), and the two committed sessions are worked examples. Use distinct ids for distinct meanings, and fill `not_to_be_confused_with` wherever a word is shared. Put anything unresolved in `open_questions`.
 
 ## 4. Draft and open a PR
 
 ```
-python -m semantic_layer harvest draft <session>
-python -m semantic_layer validate
-python -m semantic_layer build
+python -m src.semantic_layer harvest draft <session>
+python -m src.semantic_layer validate
+python -m src.semantic_layer build
 ```
 
 Drafts are `status: draft` with `provenance.method: harvest`. Bindings for the other platform are **proposed**: transpiled and dry-run, but marked for review, because transpilation is a suggestion and not a truth. Fix validation errors (often a missing confusion target: draft it or remove the link), then open a branch and a **draft PR** listing the open questions. Owners certify in review. Never set `certified` yourself.
 
-Finally, run `python -m semantic_layer disagree`. If this query computes something another team computes differently, put the numbers in the PR description.
+Finally, run `python -m src.semantic_layer disagree`. If this query computes something another team computes differently, put the numbers in the PR description.

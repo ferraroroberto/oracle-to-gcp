@@ -7,13 +7,13 @@ Read this file once at the start of any `semantic-*` skill. It owns the rules al
 Every structural step is a deterministic command. Never re-implement one in the conversation.
 
 ```
-python -m semantic_layer <command> [--json] [--root <layer-root>]
+python -m src.semantic_layer <command> [--json] [--root <layer-root>]
 ```
 
 - Run from the repository root; use the repo's virtualenv interpreter if it has one (e.g. `.venv\Scripts\python.exe` on Windows, `.venv/bin/python` elsewhere).
 - Add `--json` whenever *you* will read the output; use the markdown form when showing the user.
-- `--root` defaults to the `semantic_layer/` folder.
-- Command reference: `semantic_layer/README.md` → "Commands".
+- `--root` defaults to the `src/semantic_layer/` folder.
+- Command reference: `src/semantic_layer/README.md` → "Commands".
 
 ## Ground rules
 
