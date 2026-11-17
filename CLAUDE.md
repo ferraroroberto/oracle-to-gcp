@@ -17,7 +17,7 @@ Canonical instructions for AI coding agents in this repository. Claude Code read
 
 ## Verification (before declaring a task done)
 
-One pre-ship gate runs byte-compile, `ruff`, the vendored ratchets below, the semantic layer gate (`validate`, `build --check`, `eval`), and `pytest` (unit + headless e2e boot smoke test + `semantic_layer/tests`). Each ratchet script is vendored from project-scaffolding and fails only beyond its `.<name>-ratchet-baseline.json`:
+One pre-ship gate runs byte-compile, `ruff`, the vendored ratchets below, the semantic layer gate (`validate`, `build --check`, `eval`), and `pytest` (unit + headless e2e boot smoke test + `tests/semantic_layer`). Each ratchet script is vendored from project-scaffolding and fails only beyond its `.<name>-ratchet-baseline.json`:
 
 - docs (`scripts/docs_ratchet.py`): `README.md` passes 40 KiB or a doc gains a history marker; `--update-baseline` after removing markers.
 - structure (`scripts/structure_ratchet.py`): a file passes 1,000 lines, a function 100 lines, a directory 40 modules, a `src` module imports `app`, or a root folder falls outside the `.fleet.toml` `shape` + `extra_roots`; never `--allow-additions` without review; where code goes: `docs/layout.md`.
@@ -27,7 +27,7 @@ One pre-ship gate runs byte-compile, `ruff`, the vendored ratchets below, the se
 - static (`scripts/static_ratchet.py`): a duplicated block, an unused import or variable, or a curated ruff bug/security finding; needs `npx` and `ruff`, and a missing one is NOT CONFIRMED, never a pass.
 - comment (`scripts/comment_ratchet.py`): a product-code file carries more `#NNN` issue references in comments than recorded.
 - conventions (`scripts/conventions_ratchet.py`): a Python file has more hits of an enabled rule than recorded. The rules enabled in `.fleet.toml`: `no-window`, `logging-not-print`, `no-drive-path`, `subprocess-timeout`, plus the state suspects `state-literal`, `state-set-repeat` and `state-write` (a lifecycle string or flag handled outside a declared `[[state_machines]]` module). A call that must break a rule carries a reasoned `# <rule>-exempt: ...` marker.
-- runtime write (`scripts/runtime_write_ratchet.py`): a Python file gains a write target that resolves under a code folder (`src`, `app`, `scripts`, `semantic_layer`), or the test run leaves an untracked or ignored file there; a target it cannot resolve is NOT CONFIRMED, never clean.
+- runtime write (`scripts/runtime_write_ratchet.py`): a Python file gains a write target that resolves under a code folder (`src`, `app`, `scripts`), or the test run leaves an untracked or ignored file there; a target it cannot resolve is NOT CONFIRMED, never clean.
 
 ```powershell
 & .\scripts\verify-before-ship.ps1
@@ -43,8 +43,8 @@ Run `verify-before-ship.ps1` before declaring any UI-touching change done — it
 
 ## CI expectations
 
-- Workflow `.github/workflows/semantic-layer.yml` runs on a PR that touches `semantic_layer/**`, `.github/skills/semantic-*/**` or the workflow itself, and on a push to `main` that touches `semantic_layer/**`: validate, `build --check`, golden-question evals, toolkit tests. **Advisory, not required** — the local gate runs the same semantic layer checks and is the contract.
-- E2e surface: none in CI (the Streamlit boot smoke test runs only in the local gate). A diff outside `semantic_layer/**` and the semantic skills triggers no workflow run, so there is no CI run to wait on.
+- Workflow `.github/workflows/semantic-layer.yml` runs on a PR that touches `src/semantic_layer/**`, `data/semantic_layer/**`, `tests/semantic_layer/**`, `.github/skills/semantic-*/**` or the workflow itself, and on a push to `main` that touches those three folders: validate, `build --check`, golden-question evals, toolkit tests. **Advisory, not required** — the local gate runs the same semantic layer checks and is the contract.
+- E2e surface: none in CI (the Streamlit boot smoke test runs only in the local gate). A diff outside those semantic layer folders and the semantic skills triggers no workflow run, so there is no CI run to wait on.
 
 ## Restart and verify before hand-off
 
@@ -59,6 +59,6 @@ No tray, PWA, or long-lived background service — `launch_app.bat` starts a loc
 ## This repository
 Oracle to GCP is a local Streamlit + Python pipeline prototype translating Oracle SQL scripts to BigQuery Standard SQL through a deterministic, inspectable validation loop. It uses SQLite mock databases for the Oracle and BigQuery sides, with the local LLM hub called only as a stateless translation function when available.
 
-`semantic_layer/` is a separate, self-contained research spike (a mock team semantic layer + `sl` toolkit + `.github/skills/semantic-*` agent skills). It must never import from `src/` or `tests/audits/` — it is designed to be lifted out and ported. After changing its YAML under `semantic_layer/domains/`, run `python -m semantic_layer build` and commit the regenerated `semantic_layer/build/` (the gate's `build --check` fails otherwise). Its content is fictitious; this repo is public.
+The semantic layer is a separate, self-contained research spike (a mock team semantic layer: the `sl` toolkit in `src/semantic_layer/`, its definitions in `data/semantic_layer/`, its tests in `tests/semantic_layer/`, and the `.github/skills/semantic-*` agent skills). It must never import from the sibling `src/` modules or `tests/audits/` — it is designed to be lifted out and ported. After changing its YAML under `data/semantic_layer/domains/`, run `python -m src.semantic_layer build` and commit the regenerated `data/semantic_layer/build/` (the gate's `build --check` fails otherwise). Its content is fictitious; this repo is public.
 
 See `README.md` for operation and `docs/architecture-rationale.md` for design reasoning.

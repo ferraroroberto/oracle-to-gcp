@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 # Mirrors `code_folders` in .fleet.toml [runtime_write_ratchet]; the ratchet cannot
 # resolve a caller-supplied path, so this check enforces the same boundary at runtime.
-CODE_FOLDERS = ("src", "app", "scripts", "semantic_layer")
+CODE_FOLDERS = ("src", "app", "scripts")
 
 
 def require_runtime_path(path: str | Path) -> Path:

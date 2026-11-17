@@ -7,7 +7,7 @@
     Runs, fail-fast, the checks for this Streamlit + Python pipeline prototype.
 
     Stages:
-      1. byte-compile    — every .py under app/ src/ tests/ semantic_layer/ parses
+      1. byte-compile    — every .py under app/ src/ tests/ parses
       2. ruff            — lint the whole repo (ruff defaults + pyupgrade)
       3. docs ratchet    — README.md within 40 KiB and no new history marker (issue
                            reference, dated or changelog heading) in README.md or
@@ -50,7 +50,7 @@
      11. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
      12. pytest       — unit + headless e2e (auto-boots Streamlit per its fixture),
-                           including semantic_layer/tests; bracketed by the runtime write
+                           including tests/semantic_layer; bracketed by the runtime write
                            probe (--snapshot before, --probe after): any untracked or
                            ignored file the run left under a code folder fails
 
@@ -117,7 +117,7 @@ if (-not (Test-Path $py)) {
 # time") cannot be confused with it.
 . (Join-Path $PSScriptRoot "box_lock_gate.ps1"); Enter-BoxLockGate
 
-Invoke-Stage "byte-compile"                       { & $py -m compileall -q app src tests semantic_layer }
+Invoke-Stage "byte-compile"                       { & $py -m compileall -q app src tests }
 Invoke-Stage "ruff"                               { & $py -m ruff check . }
 # The wrapper maps the script's exit 3 to NOT CONFIRMED (tests/test_docs_ratchet_gate.py
 # pins it); call it, never scripts/docs_ratchet.py directly.
@@ -132,9 +132,9 @@ Invoke-Stage "static ratchet"                     { & $py scripts/static_ratchet
 Invoke-Stage "comment ratchet"                    { & $py scripts/comment_ratchet.py }
 Invoke-Stage "conventions ratchet"                { & $py scripts/conventions_ratchet.py }
 Invoke-Stage "runtime write ratchet" { & $py scripts/runtime_write_ratchet.py }
-Invoke-Stage "semantic layer: validate"           { & $py -m semantic_layer validate }
-Invoke-Stage "semantic layer: build --check"      { & $py -m semantic_layer build --check }
-Invoke-Stage "semantic layer: eval"               { & $py -m semantic_layer eval }
+Invoke-Stage "semantic layer: validate"           { & $py -m src.semantic_layer validate }
+Invoke-Stage "semantic layer: build --check"      { & $py -m src.semantic_layer build --check }
+Invoke-Stage "semantic layer: eval"               { & $py -m src.semantic_layer eval }
 # Runtime write probe, first half: what already sits untracked or ignored under
 # the code folders, so the probe after the tests names only what they wrote.
 $runtimeSnapshot = Join-Path ([IO.Path]::GetTempPath()) "runtime-write-snapshot-$PID.json"

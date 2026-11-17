@@ -11,12 +11,12 @@ Pick the command that answers the question and show its markdown output. Add `--
 
 | Question | Command |
 |---|---|
-| "Is there a definition for X?" / "what do we call Y?" | `python -m semantic_layer search "<words>"` |
-| "What exactly is X, and who do I ask?" | `python -m semantic_layer show <id>` (definition, bindings per platform, confusions, steward, recent git history) |
-| "What does team T own?" | `python -m semantic_layer owners --team <team>` |
-| "What uses table T? Is it migrated?" | `python -m semantic_layer table <name>` |
-| "What depends on X / what does X depend on?" | `python -m semantic_layer lineage <id>` |
-| "Is X healthy? What's overdue?" | `python -m semantic_layer health [--overdue]` |
+| "Is there a definition for X?" / "what do we call Y?" | `python -m src.semantic_layer search "<words>"` |
+| "What exactly is X, and who do I ask?" | `python -m src.semantic_layer show <id>` (definition, bindings per platform, confusions, steward, recent git history) |
+| "What does team T own?" | `python -m src.semantic_layer owners --team <team>` |
+| "What uses table T? Is it migrated?" | `python -m src.semantic_layer table <name>` |
+| "What depends on X / what does X depend on?" | `python -m src.semantic_layer lineage <id>` |
+| "Is X healthy? What's overdue?" | `python -m src.semantic_layer health [--overdue]` |
 
 Rules:
 - Always name the **steward**: they are the answer to "who do I ask?".
