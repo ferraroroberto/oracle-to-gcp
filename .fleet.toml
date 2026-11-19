@@ -43,6 +43,17 @@ runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "55051
 instruction_frontmatter = { src = "scripts/instruction_frontmatter.py", sha = "c5535ac326c398df8f44486f386ff0e0b6d4c61c", dest = "scripts/instruction_frontmatter.py" }
 instruction_repeats = { src = "scripts/instruction_repeats.py", sha = "c5535ac326c398df8f44486f386ff0e0b6d4c61c", dest = "scripts/instruction_repeats.py" }
 
+# [ci.nightly] -- this repo's settings for the Mac Mini nightly, the fleet's one CI
+# (project-scaffolding docs/mac-runner.md, "The [ci.nightly] table"). The unit leg
+# excludes `windows_only` tests (the PowerShell gate tests in tests/test_gate_result.py);
+# the e2e leg runs the Streamlit boot smoke on WebKit and boots its own app. No `views`:
+# the simulator smoke needs a [design.review.synthetic] command this repo does not declare.
+[ci.nightly]
+python       = "3.12"
+requirements = ["requirements.txt"]
+unit         = ["tests", "--ignore=tests/e2e"]
+e2e          = ["tests/e2e"]
+
 # [docs_ratchet] -- the scaffold's docs ratchet. The gate (scripts/verify-before-ship.ps1)
 # runs scripts/docs_ratchet.py through scripts/docs_ratchet_gate.py, which fails when
 # README.md grows past 40 KiB or when README.md / docs/**/*.md gains a history marker

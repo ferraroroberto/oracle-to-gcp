@@ -24,7 +24,12 @@ BOX_LOCK = REPO_ROOT / "scripts" / "box_lock_gate.ps1"
 POWERSHELL = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
-windows_only = pytest.mark.skipif(sys.platform != "win32", reason="the gate is a Windows PowerShell script")
+_skip_off_windows = pytest.mark.skipif(sys.platform != "win32", reason="the gate is a Windows PowerShell script")
+
+
+def windows_only(test):
+    """Mark a test that runs the PowerShell gate: skipped off Windows, excluded by `-m "not windows_only"`."""
+    return pytest.mark.windows_only(_skip_off_windows(test))
 
 
 def _verdict_block() -> str:
