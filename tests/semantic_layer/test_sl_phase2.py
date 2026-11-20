@@ -60,7 +60,9 @@ def test_full_disagreement_compares_at_one_period_and_skips_parameters(layer: La
 
 def test_full_checks_clean(layer: Layer) -> None:
     report = checks.run(layer, today="2026-10-20", full=True)
-    assert report["summary"]["failing"] == 0 and report["summary"]["unknown"] == 0
+    # Name the findings so a red run says which check broke, not just a count.
+    findings = {def_id: d["findings"] for def_id, d in report["definitions"].items() if d["status"] != "ok"}
+    assert report["summary"]["failing"] == 0 and report["summary"]["unknown"] == 0, findings
 
 
 def test_full_checks_catch_a_stale_anchor(layer: Layer, layer_root: Path) -> None:
