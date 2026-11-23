@@ -42,6 +42,8 @@ runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "4a06c
 runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "ce64203b017ba636c82737ee7f768c9ef6f422cd", dest = "scripts/runtime_write_resolve.py" }
 instruction_frontmatter = { src = "scripts/instruction_frontmatter.py", sha = "c5535ac326c398df8f44486f386ff0e0b6d4c61c", dest = "scripts/instruction_frontmatter.py" }
 instruction_repeats = { src = "scripts/instruction_repeats.py", sha = "c5535ac326c398df8f44486f386ff0e0b6d4c61c", dest = "scripts/instruction_repeats.py" }
+request_budget_ratchet = { src = "scripts/request_budget_ratchet.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "scripts/request_budget_ratchet.py" }
+request_budget_scan = { src = "scripts/request_budget_scan.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "scripts/request_budget_scan.py" }
 
 # [ci.nightly] -- this repo's settings for the Mac Mini nightly, the fleet's one CI
 # (project-scaffolding docs/mac-runner.md, "The [ci.nightly] table"). The unit leg
@@ -169,6 +171,18 @@ call   = "sqlite3.connect"
 helper = ["src/sqlite_db.py"]
 why    = "src/sqlite_db.py is the one SQLite opener (row factory, transaction that closes)"
 
+# [request_budget_ratchet] -- the scaffold's request-budget ratchet. The gate
+# (scripts/verify-before-ship.ps1) runs scripts/request_budget_ratchet.py, which fails when
+# a file carries more polling or background-loop hits of a rule (fixed-rate polls, short
+# sleeps, default-pool use, a web app with no timing middleware) than
+# .request-budget-ratchet-baseline.json records. No handler_dirs: this repo is a Streamlit
+# app with no request handlers, so the per-request directory scan rule reports OFF. A check
+# that cannot run (exit 3) is NOT CONFIRMED and fails, never a pass. Mechanism + limits:
+# project-scaffolding docs/request-budget-ratchet.md.
+[request_budget_ratchet]
+enabled  = true
+baseline = ".request-budget-ratchet-baseline.json"
+
 # [runtime_write_ratchet] -- scripts/runtime_write_ratchet.py fails when a tracked
 # Python file gains a write target (open for writing, Path.write_*, mkdir, a log
 # FileHandler, sqlite3.connect, a copy destination) whose path resolves under a code
@@ -248,3 +262,6 @@ path = ".conventions-ratchet-baseline.json"
 [[e2e.rule]]
 tier = "none"
 path = ".runtime-write-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".request-budget-ratchet-baseline.json"
