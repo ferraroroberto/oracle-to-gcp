@@ -1,6 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "app/log_panel.py", "counts": {"unwatched-loop": 1}}
-  ]
+  "entries": []
 }
