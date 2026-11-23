@@ -52,6 +52,13 @@
                            code folder than .runtime-write-ratchet-baseline.json; a new
                            target it cannot resolve is exit 3 (not confirmed), which fails
                            like any non-zero exit.
+     10c. windows-only ratchet — no test module with more unmarked Windows-only API uses
+                           (a win32 module, ctypes.windll, os.startfile,
+                           subprocess.CREATE_NO_WINDOW, ...) than
+                           .windows-only-ratchet-baseline.json; a test that needs Windows
+                           carries `windows_only`, which the Mac nightly excludes. Whole
+                           tree, never routed; exit 3 (not confirmed) fails like any
+                           non-zero exit.
      11. semantic layer  — definitions validate, generated build/ is current,
                            golden-question evals pass
      12. pytest       — unit + headless e2e (auto-boots Streamlit per its fixture),
@@ -138,6 +145,7 @@ Invoke-Stage "comment ratchet"                    { & $py scripts/comment_ratche
 Invoke-Stage "conventions ratchet"                { & $py scripts/conventions_ratchet.py }
 Invoke-Stage "request budget ratchet"             { & $py scripts/request_budget_ratchet.py }
 Invoke-Stage "runtime write ratchet" { & $py scripts/runtime_write_ratchet.py }
+Invoke-Stage "windows-only ratchet"               { & $py scripts/windows_only_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m src.semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m src.semantic_layer build --check }
 Invoke-Stage "semantic layer: eval"               { & $py -m src.semantic_layer eval }

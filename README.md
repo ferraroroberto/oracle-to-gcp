@@ -364,7 +364,7 @@ Run the full scaffold gate:
 
 The gate includes a docs ratchet: `README.md` stays under 40 KiB and `README.md` / `docs/**/*.md` carry no more history markers (issue references, dated or changelog headings) than `.docs-ratchet-baseline.json` records. Docs state what is true now and why; history belongs to git, PRs and issues.
 
-Beside the docs ratchet the gate runs more vendored, baselined ratchets (structure, instruction, doc-refs, dead-code, static, comment, conventions, runtime write). Each fails only on a finding beyond its committed baseline, and an exit 3 (check could not run) fails as NOT CONFIRMED, never a pass. `CLAUDE.md` is the one list of what each one checks.
+Beside the docs ratchet the gate runs more vendored, baselined ratchets (structure, instruction, doc-refs, dead-code, static, comment, conventions, request budget, runtime write, windows only). Each fails only on a finding beyond its committed baseline, and an exit 3 (check could not run) fails as NOT CONFIRMED, never a pass. `CLAUDE.md` is the one list of what each one checks.
 
 The last stdout line of a gate run is `GATE-RESULT: PASS` or `GATE-RESULT: FAIL`, including a failed stage, a missing `.venv` and an early terminating error; exit codes stay 0 and 1. Don't pipe the gate when its exit code matters (`... | tail` reports `tail`'s status, so a red run reads green); a caller that cannot avoid a pipe asserts on that line, and a run without it is not a pass.
 
