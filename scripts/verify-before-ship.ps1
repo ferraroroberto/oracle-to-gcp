@@ -43,6 +43,11 @@
                            `rules` list in .fleet.toml) than
                            .conventions-ratchet-baseline.json. Whole tree, never routed;
                            exit 3 (not confirmed) fails like any non-zero exit.
+     10a. request budget ratchet — no file with more polling or background-loop hits of a
+                           rule (fixed-rate poll, short sleep, default-pool use, missing
+                           timing middleware) than .request-budget-ratchet-baseline.json.
+                           Whole tree, never routed; exit 3 (not confirmed) fails like any
+                           non-zero exit.
      10b. runtime write ratchet — no Python file with more write targets resolving under a
                            code folder than .runtime-write-ratchet-baseline.json; a new
                            target it cannot resolve is exit 3 (not confirmed), which fails
@@ -131,6 +136,7 @@ Invoke-Stage "dead-code ratchet"                  { & $py scripts/dead_code_ratc
 Invoke-Stage "static ratchet"                     { & $py scripts/static_ratchet.py }
 Invoke-Stage "comment ratchet"                    { & $py scripts/comment_ratchet.py }
 Invoke-Stage "conventions ratchet"                { & $py scripts/conventions_ratchet.py }
+Invoke-Stage "request budget ratchet"             { & $py scripts/request_budget_ratchet.py }
 Invoke-Stage "runtime write ratchet" { & $py scripts/runtime_write_ratchet.py }
 Invoke-Stage "semantic layer: validate"           { & $py -m src.semantic_layer validate }
 Invoke-Stage "semantic layer: build --check"      { & $py -m src.semantic_layer build --check }
