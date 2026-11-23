@@ -23,6 +23,7 @@ extra_roots = []
 # Vendored byte-for-byte from project-scaffolding. sha = the source repo commit
 # the copy was taken from; /propagate-vendored hash-verifies + bumps.
 [vendored]
+windows_only_ratchet = { src = "scripts/windows_only_ratchet.py", sha = "5ba99b0a04b1b5d7b3689f8f7a59bd3fe625a9bc", dest = "scripts/windows_only_ratchet.py" }
 docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "78635aa74a92b9622326cb53992e0634fbaf6246", dest = "scripts/docs_ratchet.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "4a06ca84fc9c5005d4be7fa505c9d0e7c0472dba", dest = "scripts/structure_ratchet.py" }
 structure_layout = { src = "scripts/structure_layout.py", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "scripts/structure_layout.py" }
@@ -195,6 +196,18 @@ enabled      = true
 baseline     = ".runtime-write-ratchet-baseline.json"
 code_folders = ["src", "app", "scripts"]
 
+# [windows_only_ratchet] -- the scaffold's windows-only ratchet. The gate
+# (scripts/verify-before-ship.ps1) runs scripts/windows_only_ratchet.py, which fails when a
+# test module touches a Windows-only API (a win32 module, ctypes.windll, os.startfile,
+# subprocess.CREATE_NO_WINDOW, an unset ProgramFiles-style os.environ read, a planted .exe
+# under a faked install folder) without the `windows_only` marker the [ci.nightly] unit leg
+# excludes, beyond .windows-only-ratchet-baseline.json. A check that cannot run (exit 3) is
+# NOT CONFIRMED and fails, never a pass. Mechanism + limits: project-scaffolding
+# docs/windows-only-ratchet.md.
+[windows_only_ratchet]
+enabled  = true
+baseline = ".windows-only-ratchet-baseline.json"
+
 # [e2e] -- diff-proportionate e2e routing (project-scaffolding docs/e2e-routing.md).
 # scripts/classify_e2e.py loads this table and maps the changed-file set to a
 # coverage tier; the pre-ship gate does not yet consume the result (no
@@ -265,3 +278,6 @@ path = ".runtime-write-ratchet-baseline.json"
 [[e2e.rule]]
 tier = "none"
 path = ".request-budget-ratchet-baseline.json"
+[[e2e.rule]]
+tier = "none"
+path = ".windows-only-ratchet-baseline.json"
